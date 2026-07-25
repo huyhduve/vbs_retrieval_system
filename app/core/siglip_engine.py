@@ -43,34 +43,6 @@ class SigLIP2Encoder:
             raise RuntimeError("Mô hình chưa được nạp! Vui lòng khởi tạo qua lifespan event.")
         return cls._instance
 
-    @torch.no_grad()
-    def encode_image(self, image_input: Image.Image | str | Path) -> torch.Tensor:
-        if isinstance(image_input, (str, Path)):
-            image_input = Image.open(image_input).convert("RGB")
-        elif isinstance(image_input, Image.Image):
-            image_input = image_input.convert("RGB")
-
-        inputs = self.processor(images=image_input, return_tensors="pt")
-        inputs = {k: v.to(self.device, non_blocking=True) for k, v in inputs.items()}
-
-        use_amp = True if self.device == "cuda" else False
-
-        with torch.autocast(device_type=self.device, enabled=use_amp, dtype=torch.float16):
-            outputs = self.model.get_image_features(**inputs)
-
-            if hasattr(outputs, "image_embeds"):
-                image_features = outputs.image_embeds
-            elif hasattr(outputs, "pooler_output"):
-                image_features = outputs.pooler_output
-            elif isinstance(outputs, torch.Tensor):
-                image_features = outputs
-            else:
-                image_features = outputs[0]
-
-            image_features = image_features / image_features.norm(p=2, dim=-1, keepdim=True)
-
-        return image_features.squeeze(0).cpu().to(torch.float32)
-
 
     @torch.no_grad()
     def encode_image(self, image_input: Image.Image | str | Path) -> torch.Tensor:
