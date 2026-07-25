@@ -1,125 +1,72 @@
-import threading
-from typing import Union, List, Tuple, Dict
-from io import BytesIO
-import requests
+# model.py
+from pathlib import Path
+from typing import Optional
 import torch
-import torch.nn.functional as F
-import numpy as np
+import torch.nn as nn
 from PIL import Image
 from transformers import AutoModel, AutoProcessor
+from config import settings
 
 
-class SigLIPEngine:
-    _instance = None
-    _lock = threading.Lock()
+class SigLIP2Encoder:
+    _instance: Optional["SigLIP2Encoder"] = None
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, ckpt: str = settings.MODEL_CKPT):
         if cls._instance is None:
-            with cls._lock:
-                if cls._instance is None:
-                    cls._instance = super(SigLIPEngine, cls).__new__(cls)
-                    cls._instance._initialized = False
+            cls._instance = super(SigLIP2Encoder, cls).__new__(cls)
+            cls._instance._initialized = False
         return cls._instance
 
-    def __init__(
-        self,
-        model_id: str = "google/siglip-base-patch16-256-multilingual",
-        device: str = None,
-    ):
-        with self._lock:
-            if getattr(self, "_initialized", False):
-                return
+    def __init__(self, ckpt: str = settings.MODEL_CKPT):
+        if getattr(self, "_initialized", False):
+            return
 
-            self.model_id = model_id
-            self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        print(f"📦 [Model Singleton] Đang nạp mô hình {ckpt} lên thiết bị: {self.device}")
 
-            if self.device == "cuda":
-                capability = torch.cuda.get_device_capability()
-                self.dtype = torch.bfloat16 if capability[0] >= 8 else torch.float16
+        self.processor = AutoProcessor.from_pretrained(ckpt)
+        self.model = AutoModel.from_pretrained(ckpt).to(self.device).eval()
+
+        if self.device == "cuda" and hasattr(torch, "compile"):
+            try:
+                self.model = torch.compile(self.model)
+                print("⚡ [Model Singleton] Đã kích hoạt torch.compile")
+            except Exception as e:
+                print(f"⚠️ [Model Singleton] Lỗi torch.compile: {e}")
+
+        self._initialized = True
+        print("✅ [Model Singleton] Nạp mô hình hoàn tất thành công!")
+
+    @classmethod
+    def get_instance(cls) -> "SigLIP2Encoder":
+        if cls._instance is None:
+            raise RuntimeError("Mô hình chưa được nạp! Vui lòng khởi tạo qua lifespan event.")
+        return cls._instance
+
+    @torch.no_grad()
+    def encode_image(self, image_input: Image.Image | str | Path) -> torch.Tensor:
+        if isinstance(image_input, (str, Path)):
+            image_input = Image.open(image_input).convert("RGB")
+        elif isinstance(image_input, Image.Image):
+            image_input = image_input.convert("RGB")
+
+        inputs = self.processor(images=image_input, return_tensors="pt")
+        inputs = {k: v.to(self.device, non_blocking=True) for k, v in inputs.items()}
+
+        use_amp = True if self.device == "cuda" else False
+
+        with torch.autocast(device_type=self.device, enabled=use_amp, dtype=torch.float16):
+            outputs = self.model.get_image_features(**inputs)
+
+            if hasattr(outputs, "image_embeds"):
+                image_features = outputs.image_embeds
+            elif hasattr(outputs, "pooler_output"):
+                image_features = outputs.pooler_output
+            elif isinstance(outputs, torch.Tensor):
+                image_features = outputs
             else:
-                self.dtype = torch.float32
+                image_features = outputs[0]
 
-            print(f"[SigLIPEngine] Initializing '{self.model_id}' on {self.device} ({self.dtype})...")
+            image_features = image_features / image_features.norm(p=2, dim=-1, keepdim=True)
 
-            self.processor = AutoProcessor.from_pretrained(self.model_id)
-            self.model = AutoModel.from_pretrained(
-                self.model_id, torch_dtype=self.dtype
-            ).to(self.device)
-            self.model.eval()
-
-            self._initialized = True
-
-    @torch.no_grad()
-    def encode_text(
-        self, 
-        texts: Union[str, List[str]], 
-        as_tensor: bool = False
-    ) -> Union[np.ndarray, torch.Tensor]:
-        if isinstance(texts, str):
-            texts = [texts]
-
-        inputs = self.processor(
-            text=texts, padding="max_length", return_tensors="pt"
-        ).to(self.device)
-
-        output = self.model.get_text_features(**inputs)
-        text_features = output.pooler_output if hasattr(output, "pooler_output") else output[0]
-
-        normalized_features = F.normalize(text_features, p=2, dim=-1)
-
-        if as_tensor:
-            return normalized_features
-        return normalized_features.to(torch.float32).cpu().numpy()
-
-    @torch.no_grad()
-    def encode_image(
-        self, 
-        images: Union[Image.Image, List[Image.Image]], 
-        as_tensor: bool = False
-    ) -> Union[np.ndarray, torch.Tensor]:
-        if isinstance(images, Image.Image):
-            images = [images]
-
-        images = [img.convert("RGB") for img in images]
-
-        inputs = self.processor(
-            images=images, return_tensors="pt"
-        ).to(self.device)
-
-        output = self.model.get_image_features(**inputs)
-        image_features = output.pooler_output if hasattr(output, "pooler_output") else output[0]
-
-        normalized_features = F.normalize(image_features, p=2, dim=-1)
-
-        if as_tensor:
-            return normalized_features
-        return normalized_features.to(torch.float32).cpu().numpy()
-
-    def predict_confidence(self, image: Image.Image, text: str) -> Dict[str, float]:
-        img_emb = self.encode_image(image, as_tensor=True)   # Shape: (1, dim)
-        text_emb = self.encode_text(text, as_tensor=True)   # Shape: (1, dim)
-
-        cosine_sim = torch.sum(img_emb * text_emb, dim=-1).item()
-
-        # 3. Quy đổi sang Confidence Score (%) theo hàm Sigmoid hiệu chỉnh cho SigLIP
-        k = 50.0       # Steepness
-        x0 = 0.04      # Decision boundary
-        confidence = 1.0 / (1.0 + np.exp(-k * (cosine_sim - x0)))
-
-        return {
-            "cosine_similarity": round(cosine_sim, 4),
-            "confidence_score": round(confidence * 100, 2)
-        }
-
-if __name__ == "__main__": 
-    engine = SigLIPEngine()
-
-    img_url = "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=500"
-    response = requests.get(img_url)
-    image = Image.open(BytesIO(response.content))
-
-    result_1 = engine.predict_confidence(image, "a photo of a dog")
-    print(f"Query: 'a photo of a dog' -> Confidence: {result_1['confidence_score']}% (Cosine Sim: {result_1['cosine_similarity']})")
-
-    result_2 = engine.predict_confidence(image, "a photo of a cat")
-    print(f"Query: 'a photo of a cat' -> Confidence: {result_2['confidence_score']}% (Cosine Sim: {result_2['cosine_similarity']})")
+        return image_features.squeeze(0).cpu().to(torch.float32)
