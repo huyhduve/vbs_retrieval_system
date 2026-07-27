@@ -1,5 +1,5 @@
 from pymilvus import MilvusClient
-from app.config import settings
+from config import settings
 
 def get_client():
     return MilvusClient(
