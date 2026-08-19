@@ -6,8 +6,9 @@ class ImageResult(BaseModel):
     asr_text: str 
 
 
-class GroupImageResult(BaseModel): 
-    groups: list[ImageResult]
+class GroupImageResult(BaseModel):  
+    video_id : str
+    group: list[ImageResult]
 
 class ImageSearchResponse(BaseModel):
     results: list[GroupImageResult]

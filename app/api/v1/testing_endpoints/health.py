@@ -13,9 +13,21 @@ def health(request: Request):
     }
 
     # Milvus
-    report["milvus"] = {
-        "status": "healthy"
-    }
+    try:
+        client = request.app.state.milvus_client
+        client.list_collections()
+
+        report["milvus"] = {
+            "status": "healthy"
+        }
+
+    except Exception as e:
+
+        report["status"] = "unhealthy"
+        report["milvus"] = {
+            "status": "unhealthy",
+            "error": str(e)
+        }
 
     # Model
     try:
