@@ -1,0 +1,21 @@
+services:
+  server: 
+    image: fastapi-server:latest 
+    build:
+      context: .              
+      dockerfile: Dockerfile 
+    container_name: fastapi-backend
+    volumes:
+      - ./data:/workspace/data 
+      - ./hf_cache:/root/.cache/huggingface 
+      - ./app:/workspace/app
+    ports:
+      - "8000:8000"
+    command: tail -f /dev/null
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all 
+              capabilities: [gpu]

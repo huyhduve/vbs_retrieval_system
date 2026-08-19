@@ -7,20 +7,21 @@ wheels/
 *.egg-info
 experiment/
 data/
+hf_cache/
+
+frontend
+frontend/
+frontend/**
+**/frontend/**
 
 # Virtual environments
-.venv
+.venv/ 
 .env
 
 # Milvus DB storages
-.db 
-.zip
+*.zip
+*.db/
 
-# frontend
-**frontend**/
 
-# hf_cache 
-hf_cache/
 
-# competition data 
-media-info-aic*
+
