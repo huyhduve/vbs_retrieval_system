@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="VLM Image Retrieval — Visual search engine for keyframe images using vector embeddings" />
+  <title>NSD WORM WEC</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="./css/style.css?v=50" />
+</head>
+<body>
+
+  <!-- ════════ Header ════════ -->
+  <header class="header">
+    <h1 class="header__title">⚡NSD WORM WEC</h1>
+    <div class="header__actions">
+      <span id="result-count" class="result-count"></span>
+      <button id="history-btn" class="header__history-btn">📋 History</button>
+    </div>
+  </header>
+
+  <!-- ════════ Main Content ════════ -->
+  <div class="app-layout">
+    <!-- ════════ Search Bar ════════ -->
+    <aside class="search-bar">
+      <div class="search-field search-field--text">
+        <div class="search-field__header">
+          <label for="search-input">Text</label>
+          <div class="score-control">
+            <input id="score-text" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="Text score" />
+            <output id="score-text-value" for="score-text">0.50</output>
+          </div>
+        </div>
+        <textarea
+          id="search-input"
+          class="search-bar__input"
+          rows="4"
+          placeholder="Enter a text query…"
+        ></textarea>
+      </div>
+      <div class="search-field search-field--asr">
+        <div class="search-field__header">
+          <label for="asr-input">ASR</label>
+          <div class="score-control">
+            <input id="score-asr" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="ASR score" />
+            <output id="score-asr-value" for="score-asr">0.50</output>
+          </div>
+        </div>
+        <textarea
+          id="asr-input"
+          class="search-bar__input"
+          rows="3"
+          placeholder="Enter speech transcript…"
+        ></textarea>
+      </div>
+      <div class="search-field search-field--ocr">
+        <div class="search-field__header">
+          <label for="ocr-input">OCR</label>
+          <div class="score-control">
+            <input id="score-ocr" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="OCR score" />
+            <output id="score-ocr-value" for="score-ocr">0.50</output>
+          </div>
+        </div>
+        <input
+          id="ocr-input"
+          class="search-bar__input"
+          type="text"
+          placeholder="Enter text detected in image…"
+          autocomplete="off"
+        />
+      </div>
+      <div class="search-bar__topk">
+        <label for="topk-slider">Top-K:</label>
+        <input id="topk-slider" type="range" />
+        <span id="topk-value" class="search-bar__topk-val"></span>
+      </div>
+      <button id="search-btn" class="search-bar__btn">
+        <span class="spinner" id="search-spinner"></span>
+        Search
+      </button>
+    </aside>
+
+    <!-- ════════ Image Grid ════════ -->
+    <main class="grid-container">
+      <div id="tab-bar" class="tab-bar" role="tablist" aria-label="Search workspaces"></div>
+      <div id="image-grid" class="image-grid"></div>
+    </main>
+  </div>
+
+  <!-- ════════ Floating Preview Windows Container ════════ -->
+  <div id="preview-windows-container" class="preview-windows-container"></div>
+
+  <!-- ════════ History Modal ════════ -->
+  <div id="history-modal" class="modal-overlay">
+    <div class="history-panel">
+      <div class="history-panel__header">
+        <h3>Submission History</h3>
+        <div class="history-panel__actions">
+          <button id="history-clear-btn" class="history-panel__btn history-panel__btn--danger">Clear</button>
+          <button id="history-close" class="history-panel__btn">Close</button>
+        </div>
+      </div>
+      <div id="history-list" class="history-list"></div>
+    </div>
+  </div>
+
+  <!-- ════════ Merge Modal ════════ -->
+  <div id="merge-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="merge-modal-title">
+    <div class="merge-panel">
+      <div class="merge-panel__header">
+        <h3 id="merge-modal-title" class="merge-panel__title">🔀 Merge Tabs</h3>
+        <button id="merge-close" class="preview-panel__close" aria-label="Close merge dialog">✕</button>
+      </div>
+      <div class="merge-panel__body">
+        <div class="merge-select-group">
+          <label for="merge-select-a" class="merge-select-label">Tab A</label>
+          <select id="merge-select-a" class="merge-select"></select>
+        </div>
+        <div class="merge-panel__divider" aria-hidden="true">🔀</div>
+        <div class="merge-select-group">
+          <label for="merge-select-b" class="merge-select-label">Tab B</label>
+          <select id="merge-select-b" class="merge-select"></select>
+        </div>
+      </div>
+      <p id="merge-warning" class="merge-panel__warning" hidden></p>
+      <div class="merge-panel__footer">
+        <button id="merge-cancel" class="merge-btn merge-btn--secondary">Cancel</button>
+        <button id="merge-confirm" class="merge-btn merge-btn--primary">🔀 Merge</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ Toasts ════════ -->
+  <div id="toast-container"></div>
+
+  <!-- ════════ Scripts (order matters) ════════ -->
+  <script src="./js/config.js?v=55"></script>
+  <script src="./js/apiService.js?v=55"></script>
+  <script src="./js/dataService.js?v=55"></script>
+  <script src="./js/submitService.js?v=55"></script>
+  <script src="./js/tabState.js?v=55"></script>
+  <script src="./js/ui.js?v=55"></script>
+  <script src="./js/app.js?v=55"></script>
+
+</body>
+</html>
