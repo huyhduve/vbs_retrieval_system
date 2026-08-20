@@ -7,7 +7,7 @@ from config import settings
 router = APIRouter()
 
 @router.post("/search", response_model=ImageSearchResponse)
-async def search(query: QueryRequest, requests: Request):
+def search(query: QueryRequest, requests: Request):
     encoder = requests.app.state.encoder
     milvus_client = requests.app.state.client
     
