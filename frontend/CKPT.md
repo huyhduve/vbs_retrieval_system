@@ -1,173 +1,358 @@
-# ⚡ NSD WORM WEC — Frontend Checkpoint & Architecture Guide (`CKPT.md`)
+# ⚡ NSD WORM WEC — Toàn bộ Kiến trúc & Bản đồ Mã nguồn Frontend (`CKPT.md`)
 
-> **Mục đích của file này:** Cung cấp tài liệu tổng quan và chi tiết toàn bộ kiến trúc, luồng hoạt động, cấu trúc tệp tin và các hàm chức năng trong thư mục `frontend_dev`. Khi các AI Agent hoặc lập trình viên tiếp nhận dự án, chỉ cần đọc file này là nắm rõ toàn bộ hệ thống mà không cần phân tích lại từ đầu.
-
----
-
-## 1. Tổng quan Dự án (Project Overview)
-
-- **Tên ứng dụng:** NSD WORM WEC (VLM Keyframe Image Retrieval & Evaluation Client).
-- **Mục tiêu:** Hệ thống truy vấn & tìm kiếm ảnh/keyframe video đa phương thức (Text, OCR, ASR) sử dụng vector embeddings, hỗ trợ workspace đa tab, xem chi tiết ảnh kèm tra cứu frame/thời gian mili-giây (`Time (ms)`), xem video YouTube đồng bộ theo frame, và gửi kết quả chấm điểm lên hệ thống đánh giá DRES (KIS / VBS Evaluation).
-- **Tech Stack:**
-  - **HTML5 / CSS3 / Vanilla JavaScript (ES6+)**.
-  - **Không dùng Framework / Bundler (No Webpack, Vite, React)** — Nạp trực tiếp qua thẻ `<script>` trong `index.html`.
-  - Giao diện Dark theme hiện đại, hỗ trợ hiệu ứng kính mờ (glassmorphism), flexbox, CSS grid và floating draggable windows.
+> **HƯỚNG DẪN DÀNH CHO AI AGENT & LẬP TRÌNH VIÊN:**
+> File này ghi chép chi tiết 100% chức năng, vị trí code, hàm, selector DOM, luồng dữ liệu (Data Flow) và sự kiện của thư mục `frontend_dev`. Khi tiếp nhận bất kỳ yêu cầu sửa đổi/thêm mới nào, **hãy tra cứu bảng ánh xạ tính năng bên dưới để định vị chính xác vị trí cần sửa mà không cần phân tích lại codebase từ đầu**.
 
 ---
 
-## 2. Thứ tự nạp Script (Script Loading Order)
+## 📑 MỤC LỤC TRA CỨU NHANH
+1. [Bảng Ánh xạ Tính năng -> Code & Selector (Feature Map)](#1-bảng-ánh-xạ-tính-năng---code--selector-feature-map)
+2. [Tổng quan Kiến trúc & Thứ tự Nạp Script](#2-tổng-quan-kiến-trúc--thứ-tự-nạp-script)
+3. [Cấu trúc Thư mục & Dữ liệu Tĩnh](#3-cấu-trúc-thư-mục--dữ-liệu-tĩnh)
+4. [Đặc tả Chi tiết Từng Module (File by File)](#4-đặc-tả-chi-tiết-từng-module-file-by-file)
+   - [4.1. `js/config.js` — Cấu hình & URL Backend](#41-jsconfigjs--cấu-hình--url-backend)
+   - [4.2. `js/apiService.js` — Tầng Giao tiếp HTTP Backend](#42-jsapiservicejs--tầng-giao-tiếp-http-backend)
+   - [4.3. `js/dataService.js` — Xử lý Dữ liệu, Ảnh, FPS & Thời gian](#43-jsdataservicejs--xử-lý-dữ-liệu-ảnh-fps--thời-gian)
+   - [4.4. `js/submitService.js` — Tích hợp Hệ thống Đánh giá DRES](#44-jssubmitservicejs--tích-hợp-hệ-thống-đánh-giá-dres)
+   - [4.5. `js/tabState.js` — Quản lý State Đa Tab & Hợp nhất Kết quả](#45-jstabstatejs--quản-lý-state-đa-tab--hợp-nhất-kết-quả)
+   - [4.6. `js/ui.js` — Render Grid, PreviewWindow, VideoWindow & Modals](#46-jsuijs--render-grid-previewwindow-videowindow--modals)
+   - [4.7. `js/app.js` — Bộ Điều phối & Bắt sự kiện Giao diện](#47-jsappjs--bộ-điều-phối--bắt-sự-kiện-giao-diện)
+   - [4.8. `css/style.css` — Hệ thống Style, Biến Màu & Glassmorphism](#48-cssstylecss--hệ-thống-style-biến-màu--glassmorphism)
+5. [Luồng Dữ liệu Chi tiết (Data Flow Workflows)](#5-luồng-dữ-liệu-chi-tiết-data-flow-workflows)
+6. [Quy tắc Phát triển & Mở rộng (Developer Recipes)](#6-quy-tắc-phát-triển--mở-rộng-developer-recipes)
 
-Toàn bộ các file Javascript chia sẻ chung Global Scope trong trình duyệt. Thứ tự khai báo trong `index.html` bắt buộc như sau:
+---
 
+## 1. Bảng Ánh xạ Tính năng -> Code & Selector (Feature Map)
+
+| Tính năng / Yêu cầu | Tệp phụ trách chính | Hàm / Lớp liên quan | DOM Selector / ID / Class |
+|---|---|---|---|
+| **Tìm kiếm đa phương thức (Text/OCR/ASR)** | `js/app.js`<br>`js/apiService.js` | `performSearch()`<br>`searchImages(searchInput)` | `#search-input`, `#asr-input`, `#ocr-input`, `#search-btn`, `#search-spinner` |
+| **Trọng số điểm (Weight Sliders)** | `js/app.js` | `scoreControls.forEach(...)` | `#score-text`, `#score-ocr`, `#score-asr`, `#score-*-value` |
+| **Top-K Slider** | `js/app.js`<br>`js/config.js` | Slider input event | `#topk-slider`, `#topk-value` |
+| **Workspace Đa Tab (Add/Switch/Close)** | `js/tabState.js`<br>`js/ui.js`<br>`js/app.js` | `createTab()`, `setActiveTab()`, `removeTab()`, `renderTabBar()` | `#tab-bar`, `.tab-item`, `.tab-add-btn`, `.tab-item__close` |
+| **Gộp 2 Tab (Merge Tabs)** | `js/tabState.js`<br>`js/ui.js`<br>`js/app.js` | `mergeTabResults(idA, idB)`, `openMergeModal()` | `.tab-merge-btn`, `#merge-modal`, `#merge-select-a`, `#merge-select-b`, `#merge-confirm` |
+| **Grid Ảnh (Gom nhóm theo Video)** | `js/ui.js`<br>`js/dataService.js` | `renderGrid(groups)`, `processSearchResultsGrouped()` | `#image-grid`, `.grid-group-row`, `.grid-group-strip`, `.grid-card` |
+| **Cửa sổ Preview nổi (Floating Modal)** | `js/ui.js` | `class PreviewWindow`, `openPreview(index)` | `#preview-windows-container`, `.preview-window-floating`, `.preview-panel` |
+| **Xem Frame lân cận (Neighbor Strip)** | `js/ui.js`<br>`js/dataService.js` | `PreviewWindow.renderStrip()`, `fetchVideoFrameList(videoCode)` | `.adj-strip-toggle`, `.adj-strip-wrapper`, `.adj-strip-frames`, `.adj-thumb` |
+| **Trường Time (ms) trong Preview** | `js/ui.js`<br>`js/dataService.js` | `PreviewWindow.updateTimeMs()`, `calculateFrameMs(frame, fps)` | `.preview-info-timems`, `video_fps.csv` |
+| **Similarity Search từ Preview** | `js/apiService.js`<br>`js/ui.js`<br>`js/app.js` | `searchSimilarImages(imageId)`, `PreviewWindow.setupEvents()` | `.preview-similarity-btn`, Event: `similaritySearchComplete` |
+| **Nộp kết quả lên DRES (Submit)** | `js/submitService.js`<br>`js/ui.js` | `handleSubmit(imageData, query)`, `submitToBackend(payload)` | `.preview-submit-btn`, `#history-modal`, `#history-list` |
+| **Cửa sổ Video YouTube nổi** | `js/ui.js`<br>`js/dataService.js` | `class VideoWindow`, `openVideoWindow(videoCode, frameNumber)` | `.video-window-floating`, `.video-panel`, `.video-iframe` |
+| **Nút Play/Pause & No Autoplay** | `js/ui.js` | `VideoWindow.initYouTubePlayer()`, `VideoWindow.togglePlay()` | `.video-play-btn`, `.video-play-btn--playing` |
+| **Real-time Time (ms) khi Video phát** | `js/ui.js` | `VideoWindow.startTimeTracker()`, `VideoWindow.updateTimeDisplay()` | `.video-panel__timems-tag`, `.video-timems-val`, `.video-info-timems` |
+| **Toast Notifications** | `js/ui.js` | `showToast(message, type)` | `#toast-container`, `.toast`, `.toast--*` |
+
+---
+
+## 2. Tổng quan Kiến trúc & Thứ tự Nạp Script
+
+Ứng dụng viết hoàn toàn bằng **Vanilla JavaScript (ES6+), HTML5, CSS3**, **KHÔNG sử dụng framework/bundler**. Tất cả các module chia sẻ chung Browser Global Scope.
+
+### Thứ tự nạp Script trong `index.html` (Bắt buộc không thay đổi):
 ```html
-<script src="./js/config.js?v=56"></script>       <!-- 1. Cấu hình hằng số & Backend URLs -->
-<script src="./js/apiService.js?v=56"></script>   <!-- 2. Gọi API Backend (Search, Health) -->
-<script src="./js/dataService.js?v=56"></script>  <!-- 3. Xử lý dữ liệu, ảnh, FPS, Manifest, Media -->
-<script src="./js/submitService.js?v=56"></script><!-- 4. Tích hợp DRES server & Submission -->
-<script src="./js/tabState.js?v=56"></script>     <!-- 5. Quản lý trạng thái đa tab (Multi-tab) -->
-<script src="./js/ui.js?v=56"></script>           <!-- 6. Quản lý DOM, Grid, Floating Windows, Modal -->
-<script src="./js/app.js?v=56"></script>          <!-- 7. Main Controller & Event Listeners -->
+<script src="https://www.youtube.com/iframe_api"></script> <!-- YouTube IFrame API -->
+<script src="./js/config.js?v=59"></script>                <!-- 1. Config & Base URLs -->
+<script src="./js/apiService.js?v=59"></script>            <!-- 2. API Services -->
+<script src="./js/dataService.js?v=59"></script>           <!-- 3. Data Processing & Time Engine -->
+<script src="./js/submitService.js?v=59"></script>         <!-- 4. DRES Evaluation Integration -->
+<script src="./js/tabState.js?v=59"></script>              <!-- 5. Multi-Tab State Store -->
+<script src="./js/ui.js?v=59"></script>                    <!-- 6. DOM & Floating Window Manager -->
+<script src="./js/app.js?v=59"></script>                   <!-- 7. Main Controller & Event Bus -->
 ```
 
-> **Lưu ý Cache:** Khi thay đổi file `.js` hoặc `.css`, hãy tăng số version `?v=...` trong `index.html`.
+> **Quy tắc Cache:** Sau mỗi lần chỉnh sửa JS/CSS, luôn cập nhật số query parameter `?v=...` ở các thẻ `<script>` và `<link rel="stylesheet">` trong `index.html`.
 
 ---
 
-## 3. Cấu trúc Thư mục & Chi tiết Từng File (File Structure & Details)
+## 3. Cấu trúc Thư mục & Dữ liệu Tĩnh
 
 ```
 frontend_dev/
-├── index.html               # Giao diện chính của ứng dụng
-├── video_fps.csv            # Bảng map video_id -> fps (VD: L21_V001,30)
-├── api contract.md          # Đặc tả API Backend & DRES
-├── CKPT.md                  # File checkpoint này (Tài liệu kiến trúc)
+├── index.html                   # HTML chính của toàn bộ Single Page Application
+├── video_fps.csv                # Bảng CSV ánh xạ video_id sang fps (video_id,fps)
+├── api contract.md              # Đặc tả API Backend FastAPI & DRES
+├── CKPT.md                      # Tài liệu checkpoint kiến trúc này
 ├── css/
-│   └── style.css            # Toàn bộ CSS (Layout, Grid, Draggable Window, Modal, Toast)
+│   └── style.css                # Toàn bộ CSS giao diện Dark theme Glassmorphism
 ├── js/
-│   ├── config.js            # Cấu hình BASE_URLS, ENDPOINTS, DEFAULTS
-│   ├── apiService.js        # Giao tiếp HTTP với Backend FastAPI
-│   ├── dataService.js       # Xử lý metadata, manifest frames, FPS map, Time (ms)
-│   ├── submitService.js     # Đăng nhập & submit lên DRES server, lưu lịch sử
-│   ├── tabState.js          # Quản lý state nhiều tab, thuật toán Merge tabs
-│   ├── ui.js                # Render Grid, PreviewWindow, VideoWindow, Modals, Toasts
-│   └── app.js               # Khởi tạo app, bắt sự kiện người dùng
+│   ├── config.js                # URL endpoints, load balancing pool & defaults
+│   ├── apiService.js            # Giao tiếp HTTP với Backend FastAPI
+│   ├── dataService.js           # Xử lý metadata ảnh, manifest JSON, FPS & Thời gian
+│   ├── submitService.js         # Đăng nhập DRES, submit KIS payload & lưu history
+│   ├── tabState.js              # State đa tab độc lập & thuật toán merge tab
+│   ├── ui.js                    # Render Grid, PreviewWindow, VideoWindow, Modal, Toast
+│   └── app.js                   # Khởi tạo ứng dụng & gắn event listeners
 └── data/
-    ├── keyframes/           # Thư mục ảnh tĩnh keyframe (định dạng .webp / .jpg)
-    ├── keyframes_index/     # File manifest JSON danh sách frame theo video ({videoCode}.json)
-    └── media/               # File JSON thông tin video Youtube ({videoCode}.json)
+    ├── keyframes/               # Ảnh keyframe tĩnh (.webp / .jpg)
+    │   └── {videoCode}/         # Thư mục theo mã video (VD: L21_V001/0001.webp)
+    ├── keyframes_index/         # Danh sách frame lân cận theo video
+    │   └── {videoCode}.json     # Mảng JSON: ["00001", "00015", "00030", ...]
+    └── media/                   # Metadata video YouTube
+        └── {videoCode}.json     # JSON: { "watch_url": "https://...", "title": "..." }
 ```
 
 ---
 
-## 4. Chi tiết Chức năng của Từng File JavaScript
+## 4. Đặc tả Chi tiết Từng Module (File by File)
 
-### 4.1. `js/config.js` — Cấu hình hệ thống
-- `CONFIG.BASE_URLS`: Mảng chứa các URL backend FastAPI (hỗ trợ pool URL để cân bằng tải / load balancing).
-- `getRandomBaseUrl()`: Chọn ngẫu nhiên một Backend URL từ pool cho mỗi request.
-- `CONFIG.ENDPOINTS`: Danh sách endpoint (`SEARCH: "/api/v1/search"`, `HEALTH: "/api/v1/health"`, `SUBMIT: "/api/v1/submit"`).
-- `CONFIG.DEFAULTS`: Cấu hình mặc định cho `TOP_K` (100, min 1, max 200).
+### 4.1. `js/config.js` — Cấu hình & URL Backend
+- `CONFIG.BASE_URLS`: Mảng chứa danh sách URL backend FastAPI (hỗ trợ load balancing).
+- `CONFIG.ENDPOINTS`:
+  - `SEARCH: "/api/v1/search"`
+  - `HEALTH: "/api/v1/health"`
+  - `SUBMIT: "/api/v1/submit"`
+- `CONFIG.DATA_PATH`: `"/data/keyframes"`
+- `CONFIG.DEFAULTS`: `{ TOP_K: 100, TOP_K_MIN: 1, TOP_K_MAX: 200 }`
+- `getRandomBaseUrl()`: Chọn ngẫu nhiên 1 Base URL từ `CONFIG.BASE_URLS` cho mỗi request.
 
-### 4.2. `js/apiService.js` — Giao tiếp API Search
-- `searchImages(searchInput)`: Gửi POST request tới `/api/v1/search` với payload:
-  ```json
-  {
-    "text": "...", "text_score": 0.5,
-    "ocr": "...", "ocr_score": 0.5,
-    "asr": "...", "asr_score": 0.5,
-    "top_k": 100
-  }
-  ```
-  *(Có đính kèm header `"ngrok-skip-browser-warning": true` khi gọi qua ngrok).*
-- `checkHealth()`: Kiểm tra trạng thái hoạt động của backend.
+---
 
-### 4.3. `js/dataService.js` — Xử lý dữ liệu, Video FPS & Thời gian
-- **Xử lý URL ảnh & Image ID:**
-  - `resolveImageUrl(imageId)`: Chuyển đổi `imageId` (ví dụ `K01_V001/001.webp`) thành đường dẫn tĩnh `./data/keyframes/K01_V001/001.webp`.
-  - `parseImageId(imageId)`: Trả về `{ videoCode, frameNumber, fileName, displayLabel }`.
-  - `processSearchResults(results)` & `processSearchResultsGrouped(results)`: Chuẩn hóa kết quả trả về từ API thành mảng flat hoặc mảng grouped theo `videoCode`.
-- **Tra cứu danh sách frame lân cận (Adjacent Frames):**
-  - `fetchVideoFrameList(videoCode)`: Đọc file `./data/keyframes_index/{videoCode}.json` (lưu cache trong `_frameListCache`) trả về danh sách các frame ID.
-  - `resolveFrameByVideoCode(videoCode, frameId, ext)`: Tạo object item đầy đủ từ frame ID lân cận.
-- **Tính toán FPS & Thời gian mili-giây:**
-  - `fetchFpsMap()`: Tự động tải và parse `video_fps.csv` thành `Map<videoCode, fps>` (tự động prefetch khi nạp script).
-  - `getVideoFps(videoCode)`: Lấy FPS của video từ map (mặc định trả về 25 nếu không tìm thấy).
-  - `calculateFrameMs(frameNumber, fps)`: Tính toán `Math.floor((frameIdx / fps) * 1000)` trả về mili-giây (không lấy số thập phân).
+### 4.2. `js/apiService.js` — Tầng Giao tiếp HTTP Backend
+- `searchImages(searchInput)`:
+  - **Mục đích:** Gửi yêu cầu tìm kiếm đa phương thức lên Backend.
+  - **Endpoint:** `POST {base}/api/v1/search`
+  - **Headers:** `Content-Type: application/json`, `ngrok-skip-browser-warning: true`
+  - **Payload Body:**
+    ```json
+    {
+      "text": "cô gái áo đỏ", "text_score": 0.5,
+      "ocr": "biển số xe",    "ocr_score": 0.5,
+      "asr": "xin chào",      "asr_score": 0.5,
+      "top_k": 100
+    }
+    ```
+- `searchSimilarImages(imageId)`:
+  - **Mục đích:** Tìm kiếm các keyframe tương đồng trực quan với 1 ảnh đã chọn.
+  - **Endpoint:** `POST {base}/api/v1/search`
+  - **Payload Body:** `{ "image_id": "L21_V001/2342.webp" }`
+- `checkHealth()`: Kiểm tra backend health check (`GET /api/v1/health`).
+- `submitToBackend(payload)`: Gửi submission tới backend mount cục bộ nếu có.
+
+---
+
+### 4.3. `js/dataService.js` — Xử lý Dữ liệu, Ảnh, FPS & Thời gian
+- `resolveImageUrl(imageId)`: Biến đổi `imageId` thành đường dẫn tĩnh `./data/keyframes/{cleanId}`.
+- `parseImageId(imageId)`: Bóc tách chuỗi thành `{ videoCode, frameNumber, fileName, displayLabel }`.
+- `processSearchResults(results)`: Chuẩn hóa kết quả dạng mảng phẳng (Flat Array) cho bộ điều hướng Preview.
+- `processSearchResultsGrouped(results)`: Chuẩn hóa kết quả gom nhóm theo `video_id` (`[{ groupId, items }]`) để render hàng Grid cuộn ngang.
+- **Manifest Frame lân cận:**
+  - `fetchVideoFrameList(videoCode)`: Đọc và cache `./data/keyframes_index/{videoCode}.json`.
+  - `resolveFrameByVideoCode(videoCode, frameId, ext)`: Sinh item đầy đủ từ frame ID lân cận.
+- **Tính toán FPS & Thời gian mili-giây / giây:**
+  - `fetchFpsMap()`: Tự động tải và parse `video_fps.csv` thành `Map<videoCode, fps>` (Prefetch ngay khi nạp script).
+  - `getVideoFps(videoCode)`: Lấy FPS từ cache map (mặc định 25 nếu không có trong CSV).
+  - `calculateFrameMs(frameNumber, fps)`: Công thức `Math.floor((frameIdx / fps) * 1000)` (số nguyên mili-giây).
   - `calculateFrameSeconds(frameNumber, fps)`: `Math.max(0, Math.round(frameIdx / fps))` (giây).
-  - `formatTimestamp(seconds)`: Định dạng giây thành chuỗi `MM:SS` hoặc `HH:MM:SS`.
+  - `formatTimestamp(seconds)`: Format thành chuỗi `MM:SS` hoặc `HH:MM:SS`.
 - **Thông tin Video YouTube:**
-  - `fetchVideoMediaInfo(videoCode)`: Đọc file `./data/media/{videoCode}.json` để lấy `watch_url`, `title`, `author`, v.v.
-  - `extractYouTubeVideoId(url)`: Trích xuất video ID 11 ký tự từ link YouTube.
+  - `fetchVideoMediaInfo(videoCode)`: Đọc và cache `./data/media/{videoCode}.json`.
+  - `extractYouTubeVideoId(url)`: Regex trích xuất 11 ký tự Video ID từ link YouTube.
 
-### 4.4. `js/submitService.js` — Đăng nhập & Nộp bài DRES (Evaluation)
-- `login()`: Tự động đăng nhập vào DRES Server (`http://192.168.28.151:5000/api/v2/login`) bằng tài khoản cấu hình, lưu `sessionId` vào `localStorage`.
-- `getActiveEvaluationId()`: Lấy ID của đợt đánh giá có `status === "ACTIVE"`.
-- `getFrameIdxFromCSV(videoCode, frameNumberStr)`: Tra cứu FPS từ `video_fps.csv` (có cache).
+---
+
+### 4.4. `js/submitService.js` — Tích hợp Hệ thống Đánh giá DRES
+- `login()`: Tự động đăng nhập vào DRES Server (`http://192.168.28.151:5000/api/v2/login`), lưu `sessionId` vào `localStorage`.
+- `getActiveEvaluationId()`: Lấy ID đợt thi ACTIVE từ `/api/v2/client/evaluation/list/?session=...`.
+- `getFrameIdxFromCSV(videoCode, frameNumberStr)`: Tra cứu FPS từ `video_fps.csv` để phục vụ tính PTS/StartMs.
 - `handleSubmit(imageData, currentQuery)`:
   - Tính `startMs = (frameNumber / fps) * 1000` và `endMs = startMs + 50`.
-  - Tạo payload KIS và POST tới `/api/v2/submit/{evaluationId}?session={sessionId}`.
-  - Ghi nhận lịch sử submit vào `localStorage` (`vlm_submission_history`).
-- Quản lý lịch sử nộp bài: `getSubmissionHistory()`, `saveSubmissionHistory()`, `clearSubmissionHistory()`.
-
-### 4.5. `js/tabState.js` — Quản lý Workspace Đa Tab (Multi-Tab State)
-- Cung cấp API quản lý tab độc lập:
-  - `createTab()`, `createTabWithData(data)`, `removeTab(id)`, `setActiveTab(id)`, `getActiveTab()`, `getTabs()`.
-  - `saveTabState(partial)`: Lưu các giá trị input (`query`, `asr`, `ocr`, `weights`, `topK`, `searchResults`, `groupedResults`) vào tab hiện tại trước khi chuyển tab.
-- **Thuật toán Hợp nhất Tab (`mergeTabResults(idA, idB)`):**
-  - Trộn xen kẽ (interleave) kết quả từ 2 tab A và B.
-  - Loại bỏ trùng lặp dựa trên `videoCode + "/" + frameNumber`.
-  - Tạo một tab mới chứa danh sách kết quả đã gộp.
-
-### 4.6. `js/ui.js` — Giao diện & Cửa sổ Floating
-- **Grid ảnh (`renderGrid`):** Hiển thị danh sách ảnh gom nhóm theo từng hàng video (`grid-group-row`), cho phép cuộn ngang từng nhóm. Click vào ảnh sẽ mở cửa sổ Preview.
-- **Cửa sổ Preview nổi (`PreviewWindow`):**
-  - Có thể kéo thả (draggable), thay đổi kích thước (resizable), focus nổi lên trên (`_highestZIndex`).
-  - Hỗ trợ mở nhiều cửa sổ preview cùng lúc.
-  - Điều hướng bằng nút ◀ / ▶ hoặc phím bấm.
-  - Hiển thị đầy đủ thông tin bên sidebar:
-    - **Video-Frame:** mã video và số thứ tự frame.
-    - **Time (ms):** thời gian frame tính bằng mili-giây (tính từ `frame / fps * 1000`).
-    - **OCR Text & ASR Text**.
-    - **Nút Submit:** Nộp trực tiếp lên DRES.
-  - **Dải frame lân cận (`Neighbor Frames Strip`):** Bấm nút `👁️ Show Neighbor Frames` để xem và chọn 7 frame lân cận liền trước/sau lấy từ manifest JSON.
-  - **Nút `▶ Show Video`:** Mở cửa sổ video YouTube tương ứng.
-- **Cửa sổ Video nổi (`VideoWindow`):**
-  - Tích hợp **YouTube IFrame Player API** (`YT.Player`), không autoplay khi vừa mở (`autoplay: 0`), tự động seek đến đúng vị trí frame (`startSeconds`).
-  - **Nút `▶ Play` / `⏸ Pause`:** Cho phép người dùng chủ động bấm phát/tạm dừng video từ vị trí ban đầu.
-  - **Trường `Time (ms)` theo thời gian thực:** Hiển thị và liên tục cập nhật mili-giây phát của video (`Math.floor(currentTime * 1000)` ms) khi video đang chạy hoặc khi người dùng tua trên YouTube.
-  - Nút xem trực tiếp trên YouTube kèm timestamp.
-- **Modal & Thông báo:**
-  - `openMergeModal(tabs)` / `closeMergeModal()`: Modal chọn 2 tab để gộp.
-  - `openHistoryPanel()` / `closeHistoryPanel()`: Modal xem lịch sử các lượt submit.
-  - `showToast(message, type)`: Hiển thị thông báo popup góc màn hình (`success`, `error`, `info`, `warning`).
-
-### 4.7. `js/app.js` — Bộ điều phối chính (Main App Entry)
-- Lắng nghe sự kiện `DOMContentLoaded`.
-- Đồng bộ các thanh trượt trọng số (`score-text`, `score-ocr`, `score-asr`) và thanh trượt `Top-K`.
-- Bắt sự kiện chuyển tab (`tabSwitch`), thêm tab (`tabAdd`), đóng tab (`tabClose`), mở modal gộp tab (`tabMergeOpen`).
-- Xử lý tìm kiếm (`performSearch()`):
-  - Validate: ít nhất 1 trường query (Text, ASR, OCR) có dữ liệu và tổng trọng số > 0.
-  - Bật loading spinner -> Gọi `searchImages` -> Xử lý kết quả bằng `dataService` -> Cập nhật UI & lưu vào tab hiện tại.
-- Bắt sự kiện phím tắt (Keyboard shortcuts) và đóng mở các modal.
+  - Tạo payload KIS:
+    ```json
+    {
+      "answerSets": [{
+        "answers": [{ "mediaItemName": videoCode, "start": startMs, "end": endMs }]
+      }]
+    }
+    ```
+  - Gửi POST tới `/api/v2/submit/{evaluationId}?session={sessionId}`.
+  - Lưu vào lịch sử submit `localStorage['vlm_submission_history']`.
+- `getSubmissionHistory()`, `saveSubmissionHistory(entry)`, `clearSubmissionHistory()`.
 
 ---
 
-## 5. Dữ liệu Đầu vào & Quy ước Định danh (Data & Identifiers)
-
-1. **Quy ước `image_id`:** Có dạng `<videoCode>/<frameNumber>.<ext>`
-   - Ví dụ: `L21_V001/001.webp` hoặc `keyframes/L21_V003/002859.jpg`.
-2. **Quy ước Video FPS (`video_fps.csv`):**
-   - Cột 1: `video_id` (ví dụ `L21_V001`).
-   - Cột 2: `fps` (ví dụ `25` hoặc `30`).
-3. **Quy ước Manifest Keyframes (`data/keyframes_index/{videoCode}.json`):**
-   - File JSON chứa mảng chuỗi số thứ tự frame: `["00001", "00015", "00030", ...]`.
-4. **Quy ước Media Video (`data/media/{videoCode}.json`):**
-   - File JSON chứa trường `watch_url` (link YouTube) và metadata liên quan.
+### 4.5. `js/tabState.js` — Quản lý State Đa Tab & Hợp nhất Kết quả
+- **Cấu trúc Tab Object:**
+  ```javascript
+  {
+    id: "tab-1",
+    title: "Search 1",
+    taskMode: "KIS",
+    query: "...", asr: "...", ocr: "...",
+    weights: { score_text: 0.5, score_ocr: 0.5, score_asr: 0.5 },
+    topK: 100,
+    searchResults: [],    // Mảng flat processed results
+    groupedResults: [],   // Mảng grouped results theo video
+    trakeBasket: []
+  }
+  ```
+- **Hàm quản trị Tab:**
+  - `createTab()`: Thêm tab trống mới và kích hoạt.
+  - `createTabWithData(data)`: Tạo tab điền sẵn kết quả (Dùng cho Similarity Search & Merge Tab).
+  - `removeTab(id)`: Đóng tab (Đảm bảo tối thiểu luôn còn 1 tab).
+  - `setActiveTab(id)`, `getActiveTab()`, `getTabById(id)`, `getTabs()`.
+  - `saveTabState(partial)`: Lưu snapshot input hiện tại vào tab active trước khi rời tab.
+- **Hợp nhất Tab (`mergeTabResults(idA, idB)`):**
+  - Trộn xen kẽ (Interleave) danh sách `searchResults` từ 2 tab.
+  - Khử trùng lặp (Deduplicate) dựa trên khóa `${videoCode}/${frameNumber}`.
+  - Trả về đối tượng tab mới chứa dữ liệu đã gộp.
 
 ---
 
-## 6. Hướng dẫn Dành cho Agent khi Mở rộng Tính năng (Dev Guidelines)
+### 4.6. `js/ui.js` — Render Grid, PreviewWindow, VideoWindow & Modals
 
-- **Khi sửa đổi giao diện / CSS:** Kiểm tra tính tương thích với dark-mode variables trong `css/style.css` (các biến `--bg-primary`, `--accent`, `--border-glass`, v.v.).
-- **Khi thêm trường thông tin mới vào Preview:** Cập nhật HTML template trong `createDom()`, thêm bộ chọn cache trong `createDom()` và hàm cập nhật dữ liệu trong `updateContent()` của class `PreviewWindow` trong `js/ui.js`.
-- **Khi thêm hàm xử lý dữ liệu mới:** Đặt trong `js/dataService.js`.
-- **Luôn tăng cache-buster version** trên các thẻ `<script src="... ?v=XX">` trong `index.html` sau mỗi lần chỉnh sửa JS.
+#### 4.6.1. Image Grid
+- `renderGrid(groups)`: Render danh sách nhóm video ra `#image-grid`. Mỗi video là 1 hàng `.grid-group-row` chứa dải card `.grid-card` cuộn ngang. Click vào card gọi `openPreview(flatIndex)`.
+- `updateResultCount(count)`: Cập nhật text `#result-count`.
+
+#### 4.6.2. Cửa sổ Preview Nổi (`class PreviewWindow`)
+- Quản lý cửa sổ preview có thể kéo thả (`setupDragging`), thay đổi kích thước, nhiều cửa sổ mở đồng thời (`openPreviewWindows`).
+- **Sidebar thông tin:**
+  - Video-Frame: `.preview-info-videoframe`
+  - Time (ms): `.preview-info-timems` (Tra cứu FPS và cập nhật tự động bằng `updateTimeMs()`).
+  - OCR Text: `.preview-info-ocr`
+  - ASR Text: `.preview-info-asr`
+  - Nút Similarity Search: `.preview-similarity-btn` (Gửi request `image_id` và bắn event `similaritySearchComplete`).
+  - Nút Submit: `.preview-submit-btn` (Gọi `handleSubmit`).
+- **Điều hướng & Frame Lân cận:**
+  - Nút ◀ / ▶: `navigateResult(-1)` / `navigateResult(1)`.
+  - Nút `👁️ Show Neighbor Frames` (`.adj-strip-toggle`): Mở dải frame lân cận (`.adj-strip-wrapper`, cửa sổ trượt 7 frame `STRIP_WINDOW = 7`).
+  - Nút `▶ Show Video` (`.show-video-btn`): Mở cửa sổ video YouTube.
+
+#### 4.6.3. Cửa sổ Video YouTube Nổi (`class VideoWindow`)
+- Kích thước mặc định **900px × 620px**, có thể kéo thả và resizable.
+- Tích hợp **YouTube IFrame Player API** (`YT.Player`), **không autoplay khi mở** (`autoplay: 0`), định vị sẵn tại `startSeconds`.
+- **Nút `▶ Play` / `⏸ Pause` (`.video-play-btn`)**: Bấm để phát từ vị trí start/tạm dừng video, tự động đổi style khi video phát (`.video-play-btn--playing`).
+- **Trường `Time (ms)` Real-time (`.video-panel__timems-tag`, `.video-timems-val`)**: Timer `setInterval(..., 50ms)` liên tục lấy `player.getCurrentTime()` và cập nhật `Math.floor(currentTime * 1000)` khi video đang chạy hoặc khi người dùng tua video.
+- Tự động huỷ `player.destroy()` và dọn dẹp interval khi đóng cửa sổ (`close()`).
+
+#### 4.6.4. Modals & Toasts
+- `openMergeModal(tabs)` / `closeMergeModal()`: Quản lý modal gộp 2 tab (`#merge-modal`).
+- `openHistoryPanel()` / `closeHistoryPanel()`: Quản lý modal lịch sử submission (`#history-modal`).
+- `showToast(message, type)`: Hiển thị toast popup góc màn hình (`#toast-container`).
+
+---
+
+### 4.7. `js/app.js` — Bộ Điều phối & Bắt sự kiện Giao diện
+- `DOMContentLoaded`: Khởi tạo UI, đồng bộ giá trị mặc định của slider.
+- **Sự kiện Tab:**
+  - `tabSwitch`: Lưu state tab cũ -> Kích hoạt tab mới -> `restoreTabToUI()` -> `refreshTabBar()`.
+  - `tabAdd`: Tạo tab mới -> Chuyển focus vào `#search-input`.
+  - `tabClose`: Đóng tab -> Phục hồi UI về tab liền kề.
+  - `tabMergeOpen`: Mở `#merge-modal`.
+- **Sự kiện Similarity Search (`similaritySearchComplete`):**
+  - Nhận kết quả từ `PreviewWindow` -> Tạo tab mới bằng `createTabWithData` -> `restoreTabToUI` -> Chuyển tab và hiển thị grid ảnh tương tự.
+- **Sự kiện Search (`performSearch()`):**
+  - Đọc `#search-input`, `#asr-input`, `#ocr-input`, các slider trọng số và `#topk-slider`.
+  - Validate dữ liệu đầu vào.
+  - Gọi `searchImages(...)` -> Chuẩn hóa bằng `dataService` -> Render grid & Lưu state tab.
+- **Phím tắt (Hotkeys):** Enter để tìm kiếm, ESC / Arrow keys để điều hướng.
+
+---
+
+### 4.8. `css/style.css` — Hệ thống Style, Biến Màu & Glassmorphism
+- **Bảng màu CSS Variables:**
+  - Nền & Kính: `--bg-primary: #0b0f19`, `--bg-secondary: #111827`, `--bg-card: #1e293b`, `--bg-glass: rgba(30, 41, 59, 0.45)`, `--border-glass: rgba(148, 163, 184, 0.12)`.
+  - Brand & Accent: `--accent: #6366f1` (Indigo), `--accent-hover: #818cf8`, `--accent-glow: rgba(99, 102, 241, 0.35)`.
+  - Trạng thái: `--success: #22c55e`, `--warning: #f59e0b`, `--error: #ef4444`.
+- **Lớp điều khiển quan trọng:**
+  - `.preview-window-floating`, `.preview-window-floating--active`: Popup Preview ảnh.
+  - `.video-window-floating`, `.video-window-floating--active`: Popup Video YouTube.
+  - `.video-play-btn`, `.video-play-btn--playing`: Nút Play/Pause video.
+  - `.preview-similarity-btn`: Nút Similarity Search gradient tím.
+  - `.adj-strip-wrapper`, `.adj-thumb--active`: Dải frame lân cận.
+
+---
+
+## 5. Luồng Dữ liệu Chi tiết (Data Flow Workflows)
+
+### 5.1. Luồng Tìm kiếm Đa phương thức (Multimodal Search)
+```
+[User Input: Text / ASR / OCR & Sliders]
+      │
+      ▼
+app.js: performSearch() ──► apiService.js: searchImages()
+                                    │ (POST /api/v1/search)
+                                    ▼
+dataService.js: processSearchResults() & processSearchResultsGrouped()
+      │
+      ├─────────────────────────────┬─────────────────────────────┐
+      ▼                             ▼                             ▼
+ui.js: renderGrid(grouped)    tabState.js: saveTabState()   ui.js: showToast()
+```
+
+### 5.2. Luồng Similarity Search (Tìm kiếm ảnh tương đồng từ Preview)
+```
+[User clicks "🔍 Similarity Search" in PreviewWindow]
+      │
+      ▼
+ui.js: PreviewWindow.setupEvents() ──► apiService.js: searchSimilarImages(imageId)
+                                                │ (POST /api/v1/search { "image_id": "..." })
+                                                ▼
+ui.js: Dispatches "similaritySearchComplete" with flat & grouped results
+      │
+      ▼
+app.js: Listener "similaritySearchComplete"
+      │
+      ├─► tabState.js: createTabWithData(detail)  (Tạo Tab mới)
+      ├─► app.js: restoreTabToUI(newTab)          (Hiển thị kết quả lên Grid)
+      └─► ui.js: renderTabBar()                   (Cập nhật Tab Bar)
+```
+
+### 5.3. Luồng Video Sync & Real-time Time (ms)
+```
+[User clicks "▶ Show Video" in PreviewWindow]
+      │
+      ▼
+ui.js: openVideoWindow(videoCode, frameNumber)
+      │
+      ├─► dataService.js: fetchVideoMediaInfo() & getVideoFps()
+      ├─► dataService.js: calculateFrameSeconds(frameNumber, fps)
+      │
+      ▼
+ui.js: new VideoWindow(...) ──► YT.Player init (autoplay: 0, seekTo: startSeconds)
+      │
+      ▼
+[User clicks "▶ Play" or plays inside YouTube iframe]
+      │
+      ▼
+ui.js: VideoWindow.handleStateChange(PLAYING)
+      │
+      ├─► VideoWindow.startTimeTracker() (Interval 50ms)
+      │         │
+      │         ▼
+      │   player.getCurrentTime() ──► Math.floor(sec * 1000) ──► Update .video-timems-val
+      │
+[User clicks "⏸ Pause" / Video ends]
+      │
+      ▼
+ui.js: VideoWindow.stopTimeTracker()
+```
+
+---
+
+## 6. Quy tắc Phát triển & Mở rộng (Developer Recipes)
+
+### 6.1. Muốn thêm một trường thông tin mới vào Preview Modal:
+1. Mở `js/ui.js` -> Tìm class `PreviewWindow` -> Phương thức `createDom()`.
+2. Thêm HTML vào `<aside class="preview-panel__sidebar">`:
+   ```html
+   <div class="preview-info__group">
+     <span class="preview-info__label">Tên Trường</span>
+     <span class="preview-info-custom preview-info__value">—</span>
+   </div>
+   ```
+3. Cache element trong `createDom()`: `this.infoCustomEl = winEl.querySelector(".preview-info-custom");`
+4. Cập nhật dữ liệu trong `updateContent()` của `PreviewWindow`.
+
+### 6.2. Muốn thay đổi Payload gửi lên Backend Search:
+1. Mở `js/apiService.js` -> Sửa hàm `searchImages()` hoặc `searchSimilarImages()`.
+2. Cập nhật `api contract.md` tương ứng.
+
+### 6.3. Muốn thay đổi công thức tính toán thời gian:
+1. Mở `js/dataService.js` -> Sửa hàm `calculateFrameMs` hoặc `calculateFrameSeconds`.
+
+### 6.4. Sau khi hoàn thành code:
+1. Kiểm tra không có lỗi console browser.
+2. Tăng số version `?v=XX` trong `index.html` cho các file CSS / JS đã chỉnh sửa.
+3. Cập nhật lại tài liệu `CKPT.md` nếu có hàm hoặc selector mới.

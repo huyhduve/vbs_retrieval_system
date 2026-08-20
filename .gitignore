@@ -11,7 +11,7 @@ data/media/
 data/database/
 data/keyframes*/
 data/*.py
-
+app/api/v2/
 
 # Virtual environments
 .venv

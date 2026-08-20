@@ -163,6 +163,7 @@ class PreviewWindow {
             <button class="show-video-btn" title="Watch Video on YouTube">
               ▶ Show Video
             </button>
+            <button class="preview-similarity-btn" title="Search similar images by Image ID">🔍 Similarity Search</button>
             <button class="adj-strip-toggle" title="Toggle adjacent frame strip">
               👁️ Show Neighbor Frames
             </button>
@@ -220,6 +221,7 @@ class PreviewWindow {
     this.infoTimeMsEl = winEl.querySelector(".preview-info-timems");
     this.infoOcrEl = winEl.querySelector(".preview-info-ocr");
     this.infoAsrEl = winEl.querySelector(".preview-info-asr");
+    this.similarityBtn = winEl.querySelector(".preview-similarity-btn");
     this.submitBtn = winEl.querySelector(".preview-submit-btn");
 
     this.stripWrapperEl = winEl.querySelector(".adj-strip-wrapper");
@@ -292,6 +294,45 @@ class PreviewWindow {
       this.showVideoBtn.addEventListener("click", () => {
         console.log(`[ShowVideo] Opening video "${this.previewItem.videoCode}" at frame "${this.previewItem.frameNumber}"`);
         openVideoWindow(this.previewItem.videoCode, this.previewItem.frameNumber);
+      });
+    }
+
+    if (this.similarityBtn) {
+      this.similarityBtn.addEventListener("click", async () => {
+        const imageId = this.previewItem.imageId;
+        if (!imageId) {
+          showToast("Invalid image ID for similarity search", "error");
+          return;
+        }
+
+        this.similarityBtn.disabled = true;
+        this.similarityBtn.textContent = "Searching...";
+        showToast(`Searching similar images for ${this.previewItem.displayLabel}…`, "info");
+
+        try {
+          const data = await searchSimilarImages(imageId);
+          const results = data.results || [];
+          const grouped = processSearchResultsGrouped(results);
+          const flat = processSearchResults(results);
+
+          document.dispatchEvent(
+            new CustomEvent("similaritySearchComplete", {
+              detail: {
+                title: `Sim: ${this.previewItem.videoCode}/${this.previewItem.frameNumber}`,
+                query: "",
+                searchResults: flat,
+                groupedResults: grouped,
+                topK: flat.length || 100,
+              },
+            })
+          );
+        } catch (err) {
+          console.error("Similarity search error:", err);
+          showToast(`Similarity search failed: ${err.message}`, "error");
+        } finally {
+          this.similarityBtn.disabled = false;
+          this.similarityBtn.textContent = "🔍 Similarity Search";
+        }
       });
     }
 
@@ -591,8 +632,8 @@ class VideoWindow {
     const container = document.getElementById("preview-windows-container") || document.body;
 
     const cascadeOffset = (openVideoWindows.size * 35) % 240;
-    const initialLeft = Math.min(window.innerWidth - 700, Math.max(40, 120 + cascadeOffset));
-    const initialTop = Math.min(window.innerHeight - 520, Math.max(40, 100 + cascadeOffset));
+    const initialLeft = Math.min(window.innerWidth - 920, Math.max(20, 60 + cascadeOffset));
+    const initialTop = Math.min(window.innerHeight - 640, Math.max(20, 50 + cascadeOffset));
 
     const winEl = document.createElement("div");
     winEl.className = "video-window-floating";

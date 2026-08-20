@@ -173,6 +173,19 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  /* ── Similarity search event ── */
+  document.addEventListener("similaritySearchComplete", (e) => {
+    saveCurrentInputsToTab();
+    const newTab = tabState.createTabWithData(e.detail);
+    restoreTabToUI(newTab);
+    refreshTabBar();
+    if (newTab.searchResults.length === 0) {
+      showToast("No similar images found", "warning");
+    } else {
+      showToast(`Similarity search: Found ${newTab.searchResults.length} images in new tab`, "success");
+    }
+  });
+
   /* ══════════════════════════════════════════
      Search
   ══════════════════════════════════════════ */

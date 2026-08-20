@@ -51,7 +51,28 @@ The UI reads `score_text`, `score_ocr`, and `score_asr` directly from the three 
 
 Non-2xx responses are surfaced by the frontend as a search error, with the response body included in the message.
 
-## 2. Backend health check
+## 2. Image similarity search
+
+`POST http://127.0.0.1:8000/api/v1/search`
+
+Triggered by the **Similarity Search** button in the preview modal.
+
+### Request body
+
+```json
+{
+  "image_id": "L21_V001/2342.webp"
+}
+```
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `image_id` | string | Yes | The keyframe ID of the reference image. |
+
+### Successful response
+Same response format as `Image search` (`{ "results": [ { "image_id": "..." } ] }`). When received, the frontend automatically opens a new search tab with the similar results.
+
+## 3. Backend health check
 
 `GET http://127.0.0.1:8000/api/v1/health`
 

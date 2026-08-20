@@ -48,6 +48,35 @@ async function searchImages(searchInput) {
 }
 
 /**
+ * Search for visually similar images using an image_id.
+ * @param {string} imageId - e.g. "L21_V001/2342.webp"
+ * @returns {Promise<{results: Array<{image_id: string}>}>}
+ */
+async function searchSimilarImages(imageId) {
+  const base = getRandomBaseUrl();
+  const url = `${base}${CONFIG.ENDPOINTS.SEARCH}`;
+  console.log(`[API] searchSimilarImages → ${url} with image_id: ${imageId}`);
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": true,
+    },
+    body: JSON.stringify({
+      image_id: imageId,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Similarity search failed (${response.status}): ${errorBody}`);
+  }
+
+  return response.json();
+}
+
+/**
  * Check backend health status.
  * @returns {Promise<object>}
  */

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Request
 from schemas.response import ImageResult, ImageSearchResponse, GroupImageResult
 from schemas.request import QueryRequest
-from milvus.connection import get_client
+from milvus.connection import prepare_search_data
 from config import settings
 
 router = APIRouter()
@@ -15,7 +15,7 @@ async def search(query: QueryRequest, requests: Request):
 
     results = milvus_client.search(
         collection_name=settings.MILVUS_COLLECTION,
-        data=embedding.tolist(),
+        data=prepare_search_data(embedding),
         output_fields=["id"], 
         limit=query.top_k
     )
