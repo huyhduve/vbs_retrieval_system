@@ -1,5 +1,4 @@
 from fastapi import FastAPI
-# from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 import os
@@ -7,7 +6,7 @@ import os
 from core.siglip_engine import SigLIP2Encoder
 from contextlib import asynccontextmanager
 from milvus.connection import get_client
-from api.v1.router import api_router
+from api.router import api_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

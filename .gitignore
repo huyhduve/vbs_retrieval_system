@@ -6,7 +6,12 @@ dist/
 wheels/
 *.egg-info
 experiment/
-data/
+data/feature*
+data/media/
+data/database/
+data/keyframes*/
+data/*.py
+
 
 # Virtual environments
 .venv
@@ -15,9 +20,11 @@ data/
 # Milvus DB storages
 .db 
 .zip
+check_milvus*
 
-# frontend
-**frontend**/
+# frontends
+frontendv*/
+frontend_*/
 
 # hf_cache 
 hf_cache/
