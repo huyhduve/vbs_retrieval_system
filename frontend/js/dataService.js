@@ -340,6 +340,18 @@ function calculateFrameSeconds(frameNumber, fps) {
 }
 
 /**
+ * Calculate time in milliseconds from frame number and fps (without decimals).
+ * @param {string|number} frameNumber - e.g. "2859" or 2859
+ * @param {number} fps - e.g. 30
+ * @returns {number} Milliseconds as an integer
+ */
+function calculateFrameMs(frameNumber, fps) {
+  const frameIdx = parseInt(String(frameNumber).replace(/\.\w+$/, ""), 10);
+  if (isNaN(frameIdx) || !fps || fps <= 0) return 0;
+  return Math.floor((frameIdx / fps) * 1000);
+}
+
+/**
  * Format seconds into HH:MM:SS or MM:SS format.
  * @param {number} seconds
  * @returns {string} e.g. "01:35"
@@ -356,3 +368,6 @@ function formatTimestamp(seconds) {
   }
   return `${pad(mins)}:${pad(secs)}`;
 }
+
+// Prefetch FPS map in background on load
+fetchFpsMap();

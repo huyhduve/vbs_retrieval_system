@@ -10,9 +10,13 @@ const CONFIG = Object.freeze({
   // Backend base URLs — add/remove entries as needed.
   // On each API call, one URL is chosen at random for load-spreading.
   BASE_URLS: [
-    "http://127.0.0.1:8000",
-    "http://127.0.0.1:8000",
-    "http://127.0.0.1:8000",
+    // "https://eating-stingily-sponge.ngrok-free.dev",
+    // "https://eating-stingily-sponge.ngrok-free.dev",
+    // "https://eating-stingily-sponge.ngrok-free.dev",
+      "http://127.0.0.1:8000", 
+      "http://127.0.0.1:8000",
+      "http://127.0.0.1:8000"
+  
   ],
 
   ENDPOINTS: {

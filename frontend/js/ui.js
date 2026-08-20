@@ -137,6 +137,7 @@ class PreviewWindow {
     this.createDom();
     this.setupDragging();
     this.setupEvents();
+    this.updateTimeMs();
     this.focus();
   }
 
@@ -180,6 +181,10 @@ class PreviewWindow {
               <span class="preview-info-videoframe preview-info__value">${this.previewItem.videoCode} - ${this.previewItem.frameNumber}</span>
             </div>
             <div class="preview-info__group">
+              <span class="preview-info__label">Time (ms)</span>
+              <span class="preview-info-timems preview-info__value">—</span>
+            </div>
+            <div class="preview-info__group">
               <span class="preview-info__label">OCR Text</span>
               <span class="preview-info-ocr preview-info__value preview-info__value--text">${this.previewItem.ocrText || "—"}</span>
             </div>
@@ -212,6 +217,7 @@ class PreviewWindow {
     this.nextBtn = winEl.querySelector(".preview-panel__nav--next");
     this.imageEl = winEl.querySelector(".preview-image");
     this.infoVideoFrameEl = winEl.querySelector(".preview-info-videoframe");
+    this.infoTimeMsEl = winEl.querySelector(".preview-info-timems");
     this.infoOcrEl = winEl.querySelector(".preview-info-ocr");
     this.infoAsrEl = winEl.querySelector(".preview-info-asr");
     this.submitBtn = winEl.querySelector(".preview-submit-btn");
@@ -330,6 +336,19 @@ class PreviewWindow {
     this.counterEl.textContent = isAdj
       ? `${this.resultIndex + 1} / ${currentResults.length} · adj`
       : `${this.resultIndex + 1} / ${currentResults.length}`;
+
+    this.updateTimeMs();
+  }
+
+  async updateTimeMs() {
+    if (!this.infoTimeMsEl) return;
+    const targetVideoCode = this.previewItem.videoCode;
+    const targetFrameNumber = this.previewItem.frameNumber;
+    const fps = await getVideoFps(targetVideoCode);
+    if (this.previewItem && this.previewItem.videoCode === targetVideoCode && this.previewItem.frameNumber === targetFrameNumber) {
+      const timeMs = calculateFrameMs(targetFrameNumber, fps);
+      this.infoTimeMsEl.textContent = `${timeMs}`;
+    }
   }
 
   toggleStrip() {
@@ -512,9 +531,37 @@ function shiftAdjacentStrip(direction) {
   }
 }
 
-/* ──────────────── Floating Video Window Manager ──────────────── */
+/* ──────────────── Floating Video Window Manager & YouTube API ──────────────── */
 
-/* ──────────────── Floating Video Window Manager ──────────────── */
+let _ytApiReady = false;
+const _ytApiReadyCallbacks = [];
+
+window.onYouTubeIframeAPIReady = function () {
+  _ytApiReady = true;
+  while (_ytApiReadyCallbacks.length > 0) {
+    const cb = _ytApiReadyCallbacks.shift();
+    try {
+      cb();
+    } catch (e) {
+      console.error("[YouTubeAPI] Callback error:", e);
+    }
+  }
+};
+
+function ensureYouTubeIframeAPI(callback) {
+  if (_ytApiReady || (window.YT && window.YT.Player)) {
+    _ytApiReady = true;
+    callback();
+    return;
+  }
+  _ytApiReadyCallbacks.push(callback);
+  if (!document.getElementById("yt-iframe-api-script")) {
+    const tag = document.createElement("script");
+    tag.id = "yt-iframe-api-script";
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
+  }
+}
 
 const openVideoWindows = new Map(); // winId -> VideoWindow instance
 let _activeVideoWindow = null;
@@ -527,10 +574,16 @@ class VideoWindow {
     this.fps = fps;
     this.startSeconds = startSeconds;
     this.id = `video-win-${videoCode}-${Date.now()}`;
+    this.playerId = `yt-player-${this.id}`;
+    this.player = null;
+    this.isPlayerReady = false;
+    this.isPlaying = false;
+    this.timeTrackerInterval = null;
 
     this.createDom();
     this.setupDragging();
     this.setupEvents();
+    this.initYouTubePlayer();
     this.focus();
   }
 
@@ -550,14 +603,11 @@ class VideoWindow {
     const title = this.mediaInfo.title || `Video ${this.videoCode}`;
     const author = this.mediaInfo.author || "YouTube";
     const timeFormatted = formatTimestamp(this.startSeconds);
+    const initialMs = Math.floor(this.startSeconds * 1000);
 
     const timestampUrl = this.mediaInfo.watch_url
       ? `${this.mediaInfo.watch_url}${this.mediaInfo.watch_url.includes("?") ? "&" : "?"}t=${this.startSeconds}s`
       : "";
-
-    const embedUrl = this.mediaInfo.videoId
-      ? `https://www.youtube.com/embed/${this.mediaInfo.videoId}?start=${this.startSeconds}&autoplay=1`
-      : null;
 
     winEl.innerHTML = `
       <div class="video-panel">
@@ -569,9 +619,17 @@ class VideoWindow {
                 ? `<span class="video-panel__timestamp" title="Frame ${this.frameNumber} @ ${this.fps} FPS">⏱️ ${timeFormatted} (F:${this.frameNumber})</span>`
                 : ""
             }
+            <span class="video-panel__timems-tag" title="Time (ms) - current playback position in milliseconds">
+              Time (ms): <strong class="video-timems-val">${initialMs}</strong>
+            </span>
             <span class="video-panel__title" title="${title}">${title}</span>
           </div>
           <div class="video-panel__header-actions">
+            ${
+              this.mediaInfo.videoId
+                ? `<button class="video-play-btn" title="Play / Pause Video">▶ Play</button>`
+                : ""
+            }
             <a href="${timestampUrl}" target="_blank" rel="noopener noreferrer" class="video-panel__ext-link" title="Open on YouTube at ${timeFormatted}">
               ↗ YouTube (${timeFormatted})
             </a>
@@ -580,8 +638,8 @@ class VideoWindow {
         </div>
         <div class="video-panel__body">
           ${
-            embedUrl
-              ? `<iframe src="${embedUrl}" title="${title}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen class="video-iframe"></iframe>`
+            this.mediaInfo.videoId
+              ? `<div id="${this.playerId}" class="video-iframe"></div>`
               : `<div class="video-error-fallback">
                   <p>Cannot embed video stream.</p>
                   <a href="${timestampUrl}" target="_blank" class="btn-yt-direct">Watch on YouTube.com (${timeFormatted}) ↗</a>
@@ -590,7 +648,8 @@ class VideoWindow {
         </div>
         <div class="video-panel__footer">
           <span class="video-info-author">👤 ${author}</span>
-          <span class="video-info-fps">⚡ ${this.fps} FPS · ${this.startSeconds}s</span>
+          <span class="video-info-timems">⏱️ Time (ms): <strong class="video-timems-val">${initialMs}</strong></span>
+          <span class="video-info-fps">⚡ ${this.fps} FPS · <span class="video-cursec-val">${this.startSeconds}s</span></span>
           ${this.mediaInfo.publish_date ? `<span class="video-info-date">📅 ${this.mediaInfo.publish_date}</span>` : ""}
         </div>
       </div>
@@ -601,6 +660,118 @@ class VideoWindow {
 
     this.headerEl = winEl.querySelector(".video-panel__header");
     this.closeBtn = winEl.querySelector(".video-panel__close");
+    this.playBtn = winEl.querySelector(".video-play-btn");
+  }
+
+  initYouTubePlayer() {
+    if (!this.mediaInfo.videoId) return;
+
+    ensureYouTubeIframeAPI(() => {
+      if (!document.getElementById(this.playerId)) return;
+      try {
+        this.player = new YT.Player(this.playerId, {
+          videoId: this.mediaInfo.videoId,
+          playerVars: {
+            start: this.startSeconds,
+            autoplay: 0, // Do NOT autoplay on open
+            playsinline: 1,
+            rel: 0,
+            enablejsapi: 1,
+          },
+          events: {
+            onReady: (event) => {
+              this.isPlayerReady = true;
+              try {
+                event.target.seekTo(this.startSeconds, true);
+                event.target.pauseVideo();
+              } catch (e) {}
+              this.updateTimeDisplay();
+            },
+            onStateChange: (event) => {
+              this.handleStateChange(event.data);
+            },
+          },
+        });
+      } catch (err) {
+        console.error(`[VideoWindow] Error initializing YT.Player:`, err);
+      }
+    });
+  }
+
+  togglePlay() {
+    if (!this.player) return;
+    try {
+      if (this.isPlaying) {
+        if (typeof this.player.pauseVideo === "function") {
+          this.player.pauseVideo();
+        }
+      } else {
+        if (typeof this.player.playVideo === "function") {
+          this.player.playVideo();
+        }
+      }
+    } catch (e) {
+      console.warn("[VideoWindow] Play/Pause error:", e);
+    }
+  }
+
+  handleStateChange(state) {
+    const isPlaying = state === 1; // YT.PlayerState.PLAYING = 1
+    this.isPlaying = isPlaying;
+
+    if (this.playBtn) {
+      if (isPlaying) {
+        this.playBtn.innerHTML = "⏸ Pause";
+        this.playBtn.classList.add("video-play-btn--playing");
+      } else {
+        this.playBtn.innerHTML = "▶ Play";
+        this.playBtn.classList.remove("video-play-btn--playing");
+      }
+    }
+
+    if (isPlaying) {
+      this.startTimeTracker();
+    } else {
+      this.stopTimeTracker();
+      this.updateTimeDisplay();
+    }
+  }
+
+  startTimeTracker() {
+    this.stopTimeTracker();
+    this.timeTrackerInterval = setInterval(() => {
+      this.updateTimeDisplay();
+    }, 50);
+  }
+
+  stopTimeTracker() {
+    if (this.timeTrackerInterval) {
+      clearInterval(this.timeTrackerInterval);
+      this.timeTrackerInterval = null;
+    }
+  }
+
+  updateTimeDisplay() {
+    let currentSec = this.startSeconds;
+    if (this.player && typeof this.player.getCurrentTime === "function") {
+      try {
+        const t = this.player.getCurrentTime();
+        if (typeof t === "number" && !isNaN(t)) {
+          currentSec = t;
+        }
+      } catch (e) {}
+    }
+    const currentMs = Math.floor(currentSec * 1000);
+
+    const timemsEls = this.winEl.querySelectorAll(".video-timems-val");
+    timemsEls.forEach((el) => {
+      el.textContent = currentMs;
+    });
+
+    const curSecEl = this.winEl.querySelector(".video-cursec-val");
+    if (curSecEl) {
+      curSecEl.textContent = `${currentSec.toFixed(1)}s`;
+    }
   }
 
   updateFrameTimestamp(frameNumber) {
@@ -608,11 +779,18 @@ class VideoWindow {
     this.startSeconds = calculateFrameSeconds(frameNumber, this.fps);
     const timeFormatted = formatTimestamp(this.startSeconds);
 
-    const embedUrl = `https://www.youtube.com/embed/${this.mediaInfo.videoId}?start=${this.startSeconds}&autoplay=1`;
-    const timestampUrl = `${this.mediaInfo.watch_url}${this.mediaInfo.watch_url.includes("?") ? "&" : "?"}t=${this.startSeconds}s`;
+    if (this.player && typeof this.player.seekTo === "function") {
+      try {
+        this.player.seekTo(this.startSeconds, true);
+        if (!this.isPlaying && typeof this.player.pauseVideo === "function") {
+          this.player.pauseVideo();
+        }
+      } catch (e) {}
+    }
 
-    const iframe = this.winEl.querySelector(".video-iframe");
-    if (iframe) iframe.src = embedUrl;
+    const timestampUrl = this.mediaInfo.watch_url
+      ? `${this.mediaInfo.watch_url}${this.mediaInfo.watch_url.includes("?") ? "&" : "?"}t=${this.startSeconds}s`
+      : "";
 
     const extLink = this.winEl.querySelector(".video-panel__ext-link");
     if (extLink) {
@@ -624,6 +802,8 @@ class VideoWindow {
     if (tsTag) {
       tsTag.textContent = `⏱️ ${timeFormatted} (F:${frameNumber})`;
     }
+
+    this.updateTimeDisplay();
   }
 
   focus() {
@@ -681,9 +861,19 @@ class VideoWindow {
   setupEvents() {
     this.winEl.addEventListener("mousedown", () => this.focus());
     this.closeBtn.addEventListener("click", () => this.close());
+    if (this.playBtn) {
+      this.playBtn.addEventListener("click", () => this.togglePlay());
+    }
   }
 
   close() {
+    this.stopTimeTracker();
+    if (this.player && typeof this.player.destroy === "function") {
+      try {
+        this.player.destroy();
+      } catch (e) {}
+      this.player = null;
+    }
     if (this.winEl && this.winEl.parentNode) {
       this.winEl.parentNode.removeChild(this.winEl);
     }
