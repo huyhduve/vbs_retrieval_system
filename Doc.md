@@ -17,6 +17,8 @@
 - Đã tách features của toàn bộ keyframes bằng các model
 - Insert hết dữ liệu vào database
 
+drive: AIC26vita/Database/features[base, large, so400m]
+
 **TODO:**
 
     + Cần survey thêm 1-2 model để thử nghiệm
@@ -27,14 +29,24 @@
   - OCR bị nhiễu khá nhiều, chưa có cách lọc (không thể xác định được từ khóa)
   - ASR khá sạch, nhưng chưa xác định model search hoặc thuật search (BM25)
 
+drive: AIC26vita/ASR
+
+Chưa up OCR
+
 **TODO:**
 
     + Lọc OCR: xóa các từ lặp đi lặp lại quá nhiều lần, tìm thuật toán search (BM25)
     + ASR: xử lí cách map segment dài với các keyframes, tìm thuật search (BM25), embedding model: bge-m3, AITeamVN/Vietnamese_Embeddingv2
 
-### 3. Similarity Search
+### 3. Similarity Search (Completed)
 
 - Cơ chế: Frontend gửi Image_ID được chọn, Backend load file feature .npy của ảnh đó đã được embed và search cosine-sim và trả và trả về list id ảnh
+
+### 4. Image Search (In progress - Đang vibe)
+
+- Cơ chế: Frontend có thêm một mục để paste ảnh -> Backend, Backend encode, query database trả về list id ảnh
+
+### 5.
 
 ## II. Why?
 
