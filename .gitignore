@@ -5,13 +5,7 @@ build/
 dist/
 wheels/
 *.egg-info
-experiment/
-data/feature*
-data/media/
-data/database/
-data/keyframes*/
-data/*.py
-app/api/v2/
+data/
 
 # Virtual environments
 .venv
