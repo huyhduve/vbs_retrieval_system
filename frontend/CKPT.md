@@ -230,7 +230,8 @@ frontend_dev/
 - Kích thước mặc định **900px × 620px**, có thể kéo thả và resizable.
 - Tích hợp **YouTube IFrame Player API** (`YT.Player`), **không autoplay khi mở** (`autoplay: 0`), định vị sẵn tại `startSeconds`.
 - **Nút `▶ Play` / `⏸ Pause` (`.video-play-btn`)**: Bấm để phát từ vị trí start/tạm dừng video, tự động đổi style khi video phát (`.video-play-btn--playing`).
-- **Trường `Time (ms)` Real-time (`.video-panel__timems-tag`, `.video-timems-val`)**: Timer `setInterval(..., 50ms)` liên tục lấy `player.getCurrentTime()` và cập nhật `Math.floor(currentTime * 1000)` khi video đang chạy hoặc khi người dùng tua video.
+- **Trường `Frame` Real-time (`.video-panel__timestamp`)**: Hiển thị dạng `Frame : <number>` và liên tục cập nhật số thứ tự Frame số nguyên `Math.round(currentTime * fps)` (`.video-frame-val`) theo thời gian thực khi video đang phát hoặc tua.
+- **Trường `Time (ms)` Real-time (`.video-panel__timems-tag`, `.video-timems-val`)**: Timer `setInterval(..., 50ms)` liên tục lấy `player.getCurrentTime()` và cập nhật `Math.floor(currentTime * 1000)` khi video đang chạy hoặc khi người dùng tua trên YouTube.
 - Tự động huỷ `player.destroy()` và dọn dẹp interval khi đóng cửa sổ (`close()`).
 
 #### 4.6.4. Modals & Toasts

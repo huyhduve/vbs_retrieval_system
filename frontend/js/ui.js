@@ -646,6 +646,8 @@ class VideoWindow {
     const timeFormatted = formatTimestamp(this.startSeconds);
     const initialMs = Math.floor(this.startSeconds * 1000);
 
+    const initialFrame = this.frameNumber !== null ? this.frameNumber : Math.round(this.startSeconds * this.fps);
+
     const timestampUrl = this.mediaInfo.watch_url
       ? `${this.mediaInfo.watch_url}${this.mediaInfo.watch_url.includes("?") ? "&" : "?"}t=${this.startSeconds}s`
       : "";
@@ -655,11 +657,7 @@ class VideoWindow {
         <div class="video-panel__header">
           <div class="video-panel__title-wrap">
             <span class="video-panel__tag">🎥 ${this.videoCode}</span>
-            ${
-              this.frameNumber
-                ? `<span class="video-panel__timestamp" title="Frame ${this.frameNumber} @ ${this.fps} FPS">⏱️ ${timeFormatted} (F:${this.frameNumber})</span>`
-                : ""
-            }
+            <span class="video-panel__timestamp" title="Real-time frame @ ${this.fps} FPS">Frame : <strong class="video-frame-val">${initialFrame}</strong></span>
             <span class="video-panel__timems-tag" title="Time (ms) - current playback position in milliseconds">
               Time (ms): <strong class="video-timems-val">${initialMs}</strong>
             </span>
@@ -803,6 +801,8 @@ class VideoWindow {
       } catch (e) {}
     }
     const currentMs = Math.floor(currentSec * 1000);
+    const currentFrame = Math.round(currentSec * this.fps);
+    const timeFormatted = formatTimestamp(currentSec);
 
     const timemsEls = this.winEl.querySelectorAll(".video-timems-val");
     timemsEls.forEach((el) => {
@@ -812,6 +812,11 @@ class VideoWindow {
     const curSecEl = this.winEl.querySelector(".video-cursec-val");
     if (curSecEl) {
       curSecEl.textContent = `${currentSec.toFixed(1)}s`;
+    }
+
+    const frameValEl = this.winEl.querySelector(".video-frame-val");
+    if (frameValEl) {
+      frameValEl.textContent = currentFrame;
     }
   }
 
