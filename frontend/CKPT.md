@@ -28,6 +28,7 @@
 | Tính năng / Yêu cầu | Tệp phụ trách chính | Hàm / Lớp liên quan | DOM Selector / ID / Class |
 |---|---|---|---|
 | **Tìm kiếm đa phương thức (Text/OCR/ASR)** | `js/app.js`<br>`js/apiService.js` | `performSearch()`<br>`searchImages(searchInput)` | `#search-input`, `#asr-input`, `#ocr-input`, `#search-btn`, `#search-spinner` |
+| **Tìm kiếm bằng Upload Ảnh / Screenshot (<1.5MB)** | `js/app.js`<br>`js/apiService.js`<br>`js/config.js` | `performSearch()`<br>`searchByImage(imageFile, topK)`<br>`setSelectedImage(file)` | `#image-dropzone`, `#image-input`, `#image-preview`, `#image-remove-btn` |
 | **Trọng số điểm (Weight Sliders)** | `js/app.js` | `scoreControls.forEach(...)` | `#score-text`, `#score-ocr`, `#score-asr`, `#score-*-value` |
 | **Top-K Slider** | `js/app.js`<br>`js/config.js` | Slider input event | `#topk-slider`, `#topk-value` |
 | **Workspace Đa Tab (Add/Switch/Close)** | `js/tabState.js`<br>`js/ui.js`<br>`js/app.js` | `createTab()`, `setActiveTab()`, `removeTab()`, `renderTabBar()` | `#tab-bar`, `.tab-item`, `.tab-add-btn`, `.tab-item__close` |
@@ -100,10 +101,12 @@ frontend_dev/
 - `CONFIG.BASE_URLS`: Mảng chứa danh sách URL backend FastAPI (hỗ trợ load balancing).
 - `CONFIG.ENDPOINTS`:
   - `SEARCH: "/api/v1/search"`
+  - `SEARCH_IMAGE: "/search/image"`
   - `HEALTH: "/api/v1/health"`
   - `SUBMIT: "/api/v1/submit"`
 - `CONFIG.DATA_PATH`: `"/data/keyframes"`
-- `CONFIG.DEFAULTS`: `{ TOP_K: 100, TOP_K_MIN: 1, TOP_K_MAX: 200 }`
+- `CONFIG.MAX_IMAGE_SIZE`: `1.5 * 1024 * 1024` bytes (1.5MB limit cho file ảnh tìm kiếm).
+- `CONFIG.DEFAULTS`: `{ TOP_K: 100, TOP_K_MIN: 1, TOP_K_MAX: 200, MAX_IMAGE_SIZE: 1572864 }`
 - `getRandomBaseUrl()`: Chọn ngẫu nhiên 1 Base URL từ `CONFIG.BASE_URLS` cho mỗi request.
 
 ---
@@ -126,6 +129,10 @@ frontend_dev/
   - **Mục đích:** Tìm kiếm các keyframe tương đồng trực quan với 1 ảnh đã chọn.
   - **Endpoint:** `POST {base}/api/v1/search`
   - **Payload Body:** `{ "image_id": "L21_V001/2342.webp" }`
+- `searchByImage(imageFile, topK)`:
+  - **Mục đích:** Upload file ảnh / screenshot để truy vấn dữ liệu.
+  - **Endpoint:** `POST {base}/search/image`
+  - **Payload Body:** `FormData` với `file: <ImageFile>` và `top_k: <topK>`.
 - `checkHealth()`: Kiểm tra backend health check (`GET /api/v1/health`).
 - `submitToBackend(payload)`: Gửi submission tới backend mount cục bộ nếu có.
 

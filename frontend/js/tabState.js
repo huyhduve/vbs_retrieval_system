@@ -32,6 +32,8 @@
         query: "",
         asr: "",
         ocr: "",
+        imageFile: null,
+        imagePreviewUrl: null,
         weights: { score_text: 0.5, score_ocr: 0.5, score_asr: 0.5 },
         topK: 100,
         searchResults: [],     // flat processed array (used by preview navigator)

@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="./css/style.css?v=61" />
+  <link rel="stylesheet" href="./css/style.css?v=62" />
 </head>
 <body>
 
@@ -80,6 +80,23 @@
         <input id="topk-slider" type="range" />
         <span id="topk-value" class="search-bar__topk-val"></span>
       </div>
+      <div class="search-field search-field--image">
+        <div class="search-field__header">
+          <label for="image-dropzone">IMAGE SEARCH</label>
+          <span class="image-size-limit">&lt; 1.5MB</span>
+        </div>
+        <div id="image-dropzone" class="image-dropzone" tabindex="0" title="Click to browse, drag & drop, or paste image (Ctrl+V)">
+          <input id="image-input" type="file" accept="image/*" class="image-input--hidden" hidden />
+          <div id="image-placeholder" class="image-dropzone__placeholder">
+            <span class="image-dropzone__icon">🖼️</span>
+            <span class="image-dropzone__text">Click, drop image or paste (Ctrl+V)</span>
+          </div>
+          <div id="image-preview-container" class="image-dropzone__preview-container" hidden>
+            <img id="image-preview" class="image-dropzone__preview" alt=" Preview" />
+            <button id="image-remove-btn" type="button" class="image-dropzone__remove" title="Remove image">✕</button>
+          </div>
+        </div>
+      </div>
       <button id="search-btn" class="search-bar__btn">
         <span class="spinner" id="search-spinner"></span>
         Search
@@ -141,13 +158,13 @@
 
   <!-- ════════ Scripts (order matters) ════════ -->
   <script src="https://www.youtube.com/iframe_api"></script>
-  <script src="./js/config.js?v=61"></script>
-  <script src="./js/apiService.js?v=61"></script>
-  <script src="./js/dataService.js?v=61"></script>
-  <script src="./js/submitService.js?v=61"></script>
-  <script src="./js/tabState.js?v=61"></script>
-  <script src="./js/ui.js?v=61"></script>
-  <script src="./js/app.js?v=61"></script>
+  <script src="./js/config.js?v=62"></script>
+  <script src="./js/apiService.js?v=62"></script>
+  <script src="./js/dataService.js?v=62"></script>
+  <script src="./js/submitService.js?v=62"></script>
+  <script src="./js/tabState.js?v=62"></script>
+  <script src="./js/ui.js?v=62"></script>
+  <script src="./js/app.js?v=62"></script>
 
 </body>
 </html>

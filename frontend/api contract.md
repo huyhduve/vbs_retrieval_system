@@ -72,7 +72,23 @@ Triggered by the **Similarity Search** button in the preview modal.
 ### Successful response
 Same response format as `Image search` (`{ "results": [ { "image_id": "..." } ] }`). When received, the frontend automatically opens a new search tab with the similar results.
 
-## 3. Backend health check
+## 3. Image file search
+
+`POST http://127.0.0.1:8000/search/image`
+
+Triggered by selecting an image file, dropping an image, or pasting a screenshot (Ctrl+V) into the image search box (file size < 1.5MB).
+
+### Request payload (`multipart/form-data`)
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `file` | Binary File | Yes | Image file (max 1.5MB). |
+| `top_k` | integer | Optional | Number of results requested (range 1-200). |
+
+### Successful response
+Same response format as `Image search` (`{ "results": [ { "image_id": "..." } ] }`). Results are processed and rendered on the image grid identically to text search.
+
+## 4. Backend health check
 
 `GET http://127.0.0.1:8000/api/v1/health`
 

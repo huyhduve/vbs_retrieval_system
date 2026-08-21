@@ -14,6 +14,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const topKSlider  = document.getElementById("topk-slider");
   const topKValue   = document.getElementById("topk-value");
   const searchBtn   = document.getElementById("search-btn");
+
+  const imageDropzone         = document.getElementById("image-dropzone");
+  const imageInput            = document.getElementById("image-input");
+  const imagePreviewContainer = document.getElementById("image-preview-container");
+  const imagePreview          = document.getElementById("image-preview");
+  const imagePlaceholder      = document.getElementById("image-placeholder");
+  const imageRemoveBtn        = document.getElementById("image-remove-btn");
+
+  let currentImageFile       = null;
+  let currentImagePreviewUrl = null;
+
   const scoreControls = [
     { input: document.getElementById("score-text"), output: document.getElementById("score-text-value") },
     { input: document.getElementById("score-ocr"),  output: document.getElementById("score-ocr-value") },
@@ -39,6 +50,94 @@ document.addEventListener("DOMContentLoaded", () => {
     topKValue.textContent = topKSlider.value;
   });
 
+  /* ── Image Search Input Handlers ── */
+  function setSelectedImage(file) {
+    if (!file) return;
+
+    if (!file.type || !file.type.startsWith("image/")) {
+      showToast("Please select a valid image file", "error");
+      return;
+    }
+
+    const maxBytes = CONFIG.MAX_IMAGE_SIZE || (1.5 * 1024 * 1024);
+    if (file.size > maxBytes) {
+      showToast(`Image size exceeds 1.5MB limit (${(file.size / (1024 * 1024)).toFixed(2)}MB)`, "error");
+      return;
+    }
+
+    currentImageFile = file;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      currentImagePreviewUrl = e.target.result;
+      imagePreview.src = currentImagePreviewUrl;
+      imagePreviewContainer.hidden = false;
+      imagePlaceholder.hidden = true;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearSelectedImage() {
+    currentImageFile = null;
+    currentImagePreviewUrl = null;
+    if (imageInput) imageInput.value = "";
+    if (imagePreview) imagePreview.src = "";
+    if (imagePreviewContainer) imagePreviewContainer.hidden = true;
+    if (imagePlaceholder) imagePlaceholder.hidden = false;
+  }
+
+  if (imageDropzone) {
+    imageDropzone.addEventListener("click", (e) => {
+      if (e.target.closest("#image-remove-btn")) return;
+      imageInput.click();
+    });
+
+    imageInput.addEventListener("change", (e) => {
+      if (e.target.files && e.target.files[0]) {
+        setSelectedImage(e.target.files[0]);
+      }
+    });
+
+    imageRemoveBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      clearSelectedImage();
+    });
+
+    imageDropzone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      imageDropzone.classList.add("image-dropzone--dragover");
+    });
+
+    imageDropzone.addEventListener("dragleave", () => {
+      imageDropzone.classList.remove("image-dropzone--dragover");
+    });
+
+    imageDropzone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      imageDropzone.classList.remove("image-dropzone--dragover");
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        setSelectedImage(e.dataTransfer.files[0]);
+      }
+    });
+  }
+
+  // Paste screenshot from clipboard (Ctrl+V)
+  document.addEventListener("paste", (e) => {
+    if (!e.clipboardData || !e.clipboardData.items) return;
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith("image/")) {
+        const file = items[i].getAsFile();
+        if (file) {
+          e.preventDefault();
+          setSelectedImage(file);
+          showToast("Pasted image screenshot from clipboard", "info");
+          break;
+        }
+      }
+    }
+  });
+
   /* ══════════════════════════════════════════
      Multi-tab helpers
   ══════════════════════════════════════════ */
@@ -51,6 +150,8 @@ document.addEventListener("DOMContentLoaded", () => {
       query: searchInput.value,
       asr:   asrInput.value,
       ocr:   ocrInput.value,
+      imageFile: currentImageFile,
+      imagePreviewUrl: currentImagePreviewUrl,
       topK:  parseInt(topKSlider.value, 10),
       weights: {
         score_text: Number(document.getElementById("score-text").value),
@@ -69,6 +170,17 @@ document.addEventListener("DOMContentLoaded", () => {
     searchInput.value = tab.query;
     asrInput.value    = tab.asr;
     ocrInput.value    = tab.ocr;
+
+    // Restore or clear Image query
+    if (tab.imageFile || tab.imagePreviewUrl) {
+      currentImageFile = tab.imageFile;
+      currentImagePreviewUrl = tab.imagePreviewUrl;
+      imagePreview.src = tab.imagePreviewUrl;
+      imagePreviewContainer.hidden = false;
+      imagePlaceholder.hidden = true;
+    } else {
+      clearSelectedImage();
+    }
 
     // Top-K
     topKSlider.value      = tab.topK;
@@ -194,6 +306,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const query = searchInput.value.trim();
     const asr   = asrInput.value.trim();
     const ocr   = ocrInput.value.trim();
+    const hasImage = !!currentImageFile;
+
     const scores = {
       score_text: Number(document.getElementById("score-text").value),
       score_ocr:  Number(document.getElementById("score-ocr").value),
@@ -201,31 +315,37 @@ document.addEventListener("DOMContentLoaded", () => {
     };
     const totalScore = scores.score_text + scores.score_ocr + scores.score_asr;
 
-    if (totalScore === 0) {
+    if (!hasImage && totalScore === 0) {
       showToast("The total of weight components must be greater than 0.", "error");
       return;
     }
 
-    if (!query && !asr && !ocr) {
-      showToast("Please enter Text, ASR, or OCR", "warning");
+    if (!hasImage && !query && !asr && !ocr) {
+      showToast("Please enter Text, ASR, OCR, or select an Image", "warning");
       searchInput.focus();
       return;
     }
 
     const topK = parseInt(topKSlider.value, 10);
-    currentQuery = query;
+    currentQuery = query || (hasImage ? `[Image Search]` : "");
     setLoading(true);
 
     try {
-      const data = await searchImages({
-        text:      query,
-        textScore: scores.score_text,
-        ocr,
-        ocrScore:  scores.score_ocr,
-        asr,
-        asrScore:  scores.score_asr,
-        topK,
-      });
+      let data;
+      if (hasImage) {
+        data = await searchByImage(currentImageFile, topK);
+      } else {
+        data = await searchImages({
+          text:      query,
+          textScore: scores.score_text,
+          ocr,
+          ocrScore:  scores.score_ocr,
+          asr,
+          asrScore:  scores.score_asr,
+          topK,
+        });
+      }
+
       const grouped = processSearchResultsGrouped(data.results || []);
       currentResults = processSearchResults(data.results || []);
 
@@ -239,6 +359,8 @@ document.addEventListener("DOMContentLoaded", () => {
         query,
         asr,
         ocr,
+        imageFile: currentImageFile,
+        imagePreviewUrl: currentImagePreviewUrl,
         topK,
         weights: { ...scores },
       });

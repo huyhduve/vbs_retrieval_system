@@ -77,6 +77,39 @@ async function searchSimilarImages(imageId) {
 }
 
 /**
+ * Search for images by uploading an image file.
+ * @param {File|Blob} imageFile - Image file to search with.
+ * @param {number} [topK] - Number of results requested.
+ * @returns {Promise<{results: Array<{image_id: string}>}>}
+ */
+async function searchByImage(imageFile, topK) {
+  const base = getRandomBaseUrl();
+  const url = `${base}${CONFIG.ENDPOINTS.SEARCH_IMAGE}`;
+  console.log(`[API] searchByImage → ${url}`);
+
+  const formData = new FormData();
+  formData.append("file", imageFile);
+  if (topK) {
+    formData.append("top_k", topK);
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "ngrok-skip-browser-warning": true,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Image search failed (${response.status}): ${errorBody}`);
+  }
+
+  return response.json();
+}
+
+/**
  * Check backend health status.
  * @returns {Promise<object>}
  */
