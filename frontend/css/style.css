@@ -146,16 +146,108 @@ body {
   height: calc(100vh - var(--header-height));
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  justify-content: flex-start;
-  gap: 14px;
   width: var(--search-panel-width);
-  padding: 24px;
+  padding: 0;
   background: var(--bg-secondary);
   border-right: 1px solid var(--border-glass);
   overflow-y: auto;
   z-index: 90;
 }
+
+/* ─────────────────────────────────────────────────────
+   Accordion Cards
+───────────────────────────────────────────────────── */
+.accordion-card {
+  background: #121526;
+  border: none;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 0;
+  overflow: hidden;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.accordion-card:hover {
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.accordion-card--expanded {
+  border-bottom: 1px solid rgba(99, 102, 241, 0.35);
+}
+
+.accordion-card--hidden {
+  display: none !important;
+}
+
+.accordion-card__header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: #1b1e36;
+  border: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  user-select: none;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.accordion-card__header:hover {
+  background: #242846;
+}
+
+.accordion-card__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.accordion-card__icon {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  transition: color var(--transition-fast);
+}
+
+.accordion-card__header:hover .accordion-card__icon {
+  color: var(--accent-hover);
+}
+
+.accordion-card__body {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  transition: grid-template-rows 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.accordion-card--expanded .accordion-card__body {
+  grid-template-rows: 1fr;
+}
+
+.accordion-card__content {
+  min-height: 0;
+  padding: 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: padding 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.accordion-card--expanded .accordion-card__content {
+  padding: 14px;
+}
+
+.accordion-card__placeholder {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 4px 0;
+}
+
+
 
 .search-field {
   display: flex;
@@ -210,7 +302,7 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-width: 128px;
+  min-width: 100px;
 }
 
 .score-control input[type="range"] {
@@ -287,22 +379,34 @@ body {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 8px;
+  gap: 4px;
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
-.search-bar__topk input[type="range"] {
-  width: 100%;
+.search-bar__topk-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search-bar__topk-row input[type="range"] {
+  flex: 1;
   accent-color: var(--accent);
   cursor: pointer;
 }
 
 .search-bar__topk-val {
-  display: inline-block;
-  text-align: left;
+  min-width: 28px;
+  text-align: right;
   font-weight: 600;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.82rem;
   color: var(--accent-hover);
+  flex-shrink: 0;
 }
 
 /* ── Image Search Dropzone ── */
@@ -412,7 +516,6 @@ body {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  margin-top: auto;
   padding: 12px 22px;
   background: var(--accent);
   border: none;
@@ -1776,4 +1879,53 @@ body {
   opacity: 0.25;
   cursor: not-allowed;
   pointer-events: none;
+}
+
+/* ── Toggle Switch ── */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 38px;
+  height: 20px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--border-glass);
+  transition: .3s;
+  border-radius: 20px;
+  border: 1px solid var(--border-glass);
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 12px;
+  width: 12px;
+  left: 3px;
+  bottom: 3px;
+  background-color: var(--text-secondary);
+  transition: .3s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+
+input:checked + .slider:before {
+  transform: translateX(18px);
+  background-color: #fff;
 }

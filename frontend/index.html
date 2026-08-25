@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="VLM Image Retrieval — Visual search engine for keyframe images using vector embeddings" />
+  <meta name="description" content="VLM Image Retrieval &mdash; Visual search engine for keyframe images using vector embeddings" />
   <title>NSD WORM WEC</title>
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet" />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="./css/style.css?v=62" />
+  <link rel="stylesheet" href="./css/style.css?v=68" />
 </head>
 <body>
 
@@ -21,86 +21,130 @@
     <h1 class="header__title">⚡NSD WORM WEC</h1>
     <div class="header__actions">
       <span id="result-count" class="result-count"></span>
-      <button id="history-btn" class="header__history-btn">📋 History</button>
+      <button id="history-btn" class="header__history-btn">📋History</button>
     </div>
   </header>
 
   <!-- ════════ Main Content ════════ -->
   <div class="app-layout">
     <!-- ════════ Search Bar ════════ -->
-    <aside class="search-bar">
-      <div class="search-field search-field--text">
-        <div class="search-field__header">
-          <label for="search-input">Text</label>
-          <div class="score-control">
-            <input id="score-text" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="Text score" />
-            <output id="score-text-value" for="score-text">0.50</output>
+    <aside class="search-bar" id="search-panel">
+
+      <!-- Card 1: Multi-Modal Search (Expanded by default) -->
+      <div class="accordion-card accordion-card--expanded" id="card-multimodal">
+        <button type="button" class="accordion-card__header" aria-expanded="true" aria-controls="card-multimodal-body">
+          <span class="accordion-card__title">Multi-Modal Search</span>
+          <span class="accordion-card__icon">▼</span>
+        </button>
+        <div id="card-multimodal-body" class="accordion-card__body">
+          <div class="accordion-card__content">
+            <div class="search-field search-field--text">
+              <div class="search-field__header">
+                <label for="search-input">Text</label>
+                <div class="score-control">
+                  <input id="score-text" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="Text score" />
+                  <output id="score-text-value" for="score-text">0.50</output>
+                </div>
+              </div>
+              <textarea id="search-input" class="search-bar__input" rows="4" placeholder="Enter a text query…"></textarea>
+            </div>
+            <div class="search-field search-field--asr">
+              <div class="search-field__header">
+                <label for="asr-input">ASR</label>
+                <div class="score-control">
+                  <input id="score-asr" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="ASR score" />
+                  <output id="score-asr-value" for="score-asr">0.50</output>
+                </div>
+              </div>
+              <textarea id="asr-input" class="search-bar__input" rows="3" placeholder="Enter speech transcript…"></textarea>
+            </div>
+            <div class="search-field search-field--ocr">
+              <div class="search-field__header">
+                <label for="ocr-input">OCR</label>
+                <div class="score-control">
+                  <input id="score-ocr" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="OCR score" />
+                  <output id="score-ocr-value" for="score-ocr">0.50</output>
+                </div>
+              </div>
+              <input id="ocr-input" class="search-bar__input" type="text" placeholder="Enter text detected in image…" autocomplete="off" />
+            </div>
+            <div class="search-bar__topk">
+              <label for="topk-slider">Top-K:</label>
+              <div class="search-bar__topk-row">
+                <input id="topk-slider" type="range" />
+                <span id="topk-value" class="search-bar__topk-val"></span>
+              </div>
+            </div>
+            <div class="search-field search-field--image">
+              <div class="search-field__header">
+                <label for="image-dropzone">IMAGE SEARCH</label>
+                <span class="image-size-limit">&lt; 1.5MB</span>
+              </div>
+              <div id="image-dropzone" class="image-dropzone" tabindex="0" title="Click to browse, drag and drop, or paste image (Ctrl+V)">
+                <input id="image-input" type="file" accept="image/*" class="image-input--hidden" hidden />
+                <div id="image-placeholder" class="image-dropzone__placeholder">
+                  <span class="image-dropzone__icon">🖼️</span>
+                  <span class="image-dropzone__text">Click, drop image or paste (Ctrl+V)</span>
+                </div>
+                <div id="image-preview-container" class="image-dropzone__preview-container" hidden>
+                  <img id="image-preview" class="image-dropzone__preview" alt=" Preview" />
+                  <button id="image-remove-btn" type="button" class="image-dropzone__remove" title="Remove image">✕</button>
+                </div>
+              </div>
+            </div>
+            <button id="search-btn" class="search-bar__btn">
+              <span class="spinner" id="search-spinner"></span>
+              Search
+            </button>
           </div>
         </div>
-        <textarea
-          id="search-input"
-          class="search-bar__input"
-          rows="4"
-          placeholder="Enter a text query…"
-        ></textarea>
       </div>
-      <div class="search-field search-field--asr">
-        <div class="search-field__header">
-          <label for="asr-input">ASR</label>
-          <div class="score-control">
-            <input id="score-asr" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="ASR score" />
-            <output id="score-asr-value" for="score-asr">0.50</output>
-          </div>
-        </div>
-        <textarea
-          id="asr-input"
-          class="search-bar__input"
-          rows="3"
-          placeholder="Enter speech transcript…"
-        ></textarea>
-      </div>
-      <div class="search-field search-field--ocr">
-        <div class="search-field__header">
-          <label for="ocr-input">OCR</label>
-          <div class="score-control">
-            <input id="score-ocr" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="OCR score" />
-            <output id="score-ocr-value" for="score-ocr">0.50</output>
-          </div>
-        </div>
-        <input
-          id="ocr-input"
-          class="search-bar__input"
-          type="text"
-          placeholder="Enter text detected in image…"
-          autocomplete="off"
-        />
-      </div>
-      <div class="search-bar__topk">
-        <label for="topk-slider">Top-K:</label>
-        <input id="topk-slider" type="range" />
-        <span id="topk-value" class="search-bar__topk-val"></span>
-      </div>
-      <div class="search-field search-field--image">
-        <div class="search-field__header">
-          <label for="image-dropzone">IMAGE SEARCH</label>
-          <span class="image-size-limit">&lt; 1.5MB</span>
-        </div>
-        <div id="image-dropzone" class="image-dropzone" tabindex="0" title="Click to browse, drag & drop, or paste image (Ctrl+V)">
-          <input id="image-input" type="file" accept="image/*" class="image-input--hidden" hidden />
-          <div id="image-placeholder" class="image-dropzone__placeholder">
-            <span class="image-dropzone__icon">🖼️</span>
-            <span class="image-dropzone__text">Click, drop image or paste (Ctrl+V)</span>
-          </div>
-          <div id="image-preview-container" class="image-dropzone__preview-container" hidden>
-            <img id="image-preview" class="image-dropzone__preview" alt=" Preview" />
-            <button id="image-remove-btn" type="button" class="image-dropzone__remove" title="Remove image">✕</button>
+
+      <!-- Card 2: Filter Search (Collapsed by default) -->
+      <div class="accordion-card" id="card-filter">
+        <button type="button" class="accordion-card__header" aria-expanded="false" aria-controls="card-filter-body">
+          <span class="accordion-card__title">Filter Search</span>
+          <span class="accordion-card__icon">►</span>
+        </button>
+        <div id="card-filter-body" class="accordion-card__body">
+          <div class="accordion-card__content">
+            <div class="search-field">
+              <div class="search-field__header">
+                <label for="filter-video-id">Video ID</label>
+              </div>
+              <input id="filter-video-id" class="search-bar__input" type="text" placeholder="e.g. L01_V001" autocomplete="off" />
+            </div>
+            
+            <div class="search-field">
+              <div class="search-field__header">
+                <label for="filter-frame-id">Frame ID</label>
+              </div>
+              <input id="filter-frame-id" class="search-bar__input" type="number" placeholder="e.g. 2859" min="0" autocomplete="off" />
+            </div>
+
+            <div class="search-bar__topk">
+              <label for="filter-topk-slider">K Nearest:</label>
+              <div class="search-bar__topk-row">
+                <input id="filter-topk-slider" type="range" />
+                <span id="filter-topk-value" class="search-bar__topk-val"></span>
+              </div>
+            </div>
+
+            <div class="search-field search-field--toggle" style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
+              <span style="color: var(--text-secondary); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;">Open Video</span>
+              <label class="switch">
+                <input type="checkbox" id="filter-open-video">
+                <span class="slider round"></span>
+              </label>
+            </div>
+
+            <button id="filter-search-btn" class="search-bar__btn" style="margin-top: 8px;">
+              Filter
+            </button>
           </div>
         </div>
       </div>
-      <button id="search-btn" class="search-bar__btn">
-        <span class="spinner" id="search-spinner"></span>
-        Search
-      </button>
+
     </aside>
 
     <!-- ════════ Image Grid ════════ -->
@@ -158,13 +202,13 @@
 
   <!-- ════════ Scripts (order matters) ════════ -->
   <script src="https://www.youtube.com/iframe_api"></script>
-  <script src="./js/config.js?v=64"></script>
-  <script src="./js/apiService.js?v=64"></script>
-  <script src="./js/dataService.js?v=64"></script>
-  <script src="./js/submitService.js?v=64"></script>
-  <script src="./js/tabState.js?v=64"></script>
-  <script src="./js/ui.js?v=64"></script>
-  <script src="./js/app.js?v=64"></script>
+  <script src="./js/config.js?v=67"></script>
+  <script src="./js/apiService.js?v=67"></script>
+  <script src="./js/dataService.js?v=67"></script>
+  <script src="./js/submitService.js?v=67"></script>
+  <script src="./js/tabState.js?v=67"></script>
+  <script src="./js/ui.js?v=67"></script>
+  <script src="./js/app.js?v=67"></script>
 
 </body>
 </html>

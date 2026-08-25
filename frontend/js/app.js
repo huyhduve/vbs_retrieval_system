@@ -25,6 +25,58 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentImageFile       = null;
   let currentImagePreviewUrl = null;
 
+  /* ── Filter Search Refs ── */
+  const filterVideoId    = document.getElementById("filter-video-id");
+  const filterFrameId    = document.getElementById("filter-frame-id");
+  const filterTopKSlider = document.getElementById("filter-topk-slider");
+  const filterTopKValue  = document.getElementById("filter-topk-value");
+  const filterOpenVideo  = document.getElementById("filter-open-video");
+  const filterSearchBtn  = document.getElementById("filter-search-btn");
+
+  /* ── Accordion Cards Toggle ── */
+  const accordionCards = document.querySelectorAll(".accordion-card");
+
+  function updateAccordionStates() {
+    let hideRest = false;
+    accordionCards.forEach((card) => {
+      if (hideRest) {
+        card.classList.add("accordion-card--hidden");
+      } else {
+        card.classList.remove("accordion-card--hidden");
+        if (card.classList.contains("accordion-card--expanded")) {
+          hideRest = true;
+        }
+      }
+    });
+  }
+
+  accordionCards.forEach((card) => {
+    const header = card.querySelector(".accordion-card__header");
+    const icon   = card.querySelector(".accordion-card__icon");
+
+    if (!header) return;
+
+    header.addEventListener("click", () => {
+      const isExpanded = card.classList.contains("accordion-card--expanded");
+
+      if (isExpanded) {
+        card.classList.remove("accordion-card--expanded");
+        header.setAttribute("aria-expanded", "false");
+        if (icon) icon.textContent = "►";
+      } else {
+        card.classList.add("accordion-card--expanded");
+        header.setAttribute("aria-expanded", "true");
+        if (icon) icon.textContent = "▼";
+      }
+      updateAccordionStates();
+    });
+  });
+
+  // Run initially to hide cards below any expanded card on page load
+  updateAccordionStates();
+
+
+
   const scoreControls = [
     { input: document.getElementById("score-text"), output: document.getElementById("score-text-value") },
     { input: document.getElementById("score-ocr"),  output: document.getElementById("score-ocr-value") },
@@ -49,6 +101,18 @@ document.addEventListener("DOMContentLoaded", () => {
   topKSlider.addEventListener("input", () => {
     topKValue.textContent = topKSlider.value;
   });
+
+  /* ── Filter Top-K slider sync ── */
+  if (filterTopKSlider) {
+    filterTopKSlider.min   = CONFIG.DEFAULTS.TOP_K_MIN;
+    filterTopKSlider.max   = CONFIG.DEFAULTS.TOP_K_MAX;
+    filterTopKSlider.value = 20; // Default to a smaller window of 20 for adjacent frames
+    filterTopKValue.textContent = filterTopKSlider.value;
+
+    filterTopKSlider.addEventListener("input", () => {
+      filterTopKValue.textContent = filterTopKSlider.value;
+    });
+  }
 
   /* ── Image Search Input Handlers ── */
   function setSelectedImage(file) {
@@ -166,6 +230,10 @@ document.addEventListener("DOMContentLoaded", () => {
    * @param {Object} tab
    */
   function restoreTabToUI(tab) {
+    // Clear Filter Search inputs
+    if (filterVideoId) filterVideoId.value = "";
+    if (filterFrameId) filterFrameId.value = "";
+
     // Inputs
     searchInput.value = tab.query;
     asrInput.value    = tab.asr;
@@ -303,6 +371,10 @@ document.addEventListener("DOMContentLoaded", () => {
   ══════════════════════════════════════════ */
 
   async function performSearch() {
+    // Clear Filter Search inputs
+    if (filterVideoId) filterVideoId.value = "";
+    if (filterFrameId) filterFrameId.value = "";
+
     const query = searchInput.value.trim();
     const asr   = asrInput.value.trim();
     const ocr   = ocrInput.value.trim();
@@ -400,6 +472,137 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.key === "Escape")     closePreview();
     if (e.key === "ArrowLeft")  navigatePreview(-1);
     if (e.key === "ArrowRight") navigatePreview(1);
+  });
+
+  /* ── Filter Search Handlers ── */
+  function groupProcessedResults(items) {
+    const groupsMap = new Map();
+    items.forEach((item) => {
+      const gId = item.groupId || item.videoCode || "unknown";
+      if (!groupsMap.has(gId)) {
+        groupsMap.set(gId, []);
+      }
+      groupsMap.get(gId).push(item);
+    });
+    return Array.from(groupsMap.entries()).map(([groupId, groupItems]) => ({
+      groupId,
+      items: groupItems
+    }));
+  }
+
+  async function performFilterSearch() {
+    const videoIdQuery = filterVideoId.value.trim();
+    const frameIdQuery = filterFrameId.value.trim();
+    const topKVal = parseInt(filterTopKSlider.value, 10);
+    const shouldOpenVideo = filterOpenVideo.checked;
+
+    if (!videoIdQuery) {
+      showToast("Please enter a Video ID", "warning");
+      filterVideoId.focus();
+      return;
+    }
+
+    if (!frameIdQuery) {
+      showToast("Please enter a Frame ID", "warning");
+      filterFrameId.focus();
+      return;
+    }
+
+    // Show loading toast
+    showToast(`Loading keyframes around frame ${frameIdQuery} of video ${videoIdQuery}...`, "info");
+
+    try {
+      // 1. Fetch manifest
+      const manifest = await fetchVideoFrameList(videoIdQuery);
+      if (!manifest || manifest.length === 0) {
+        showToast(`Video ID "${videoIdQuery}" not found or manifest index is unavailable.`, "error");
+        return;
+      }
+
+      // 2. Parse targets
+      const targetFrameInt = parseInt(frameIdQuery, 10);
+      if (isNaN(targetFrameInt)) {
+        showToast("Invalid Frame ID. Please enter a valid number.", "error");
+        return;
+      }
+
+      // 3. Find closest frame index in manifest
+      let closestIdx = -1;
+      let minDiff = Infinity;
+      for (let i = 0; i < manifest.length; i++) {
+        const fInt = parseInt(manifest[i], 10);
+        const diff = Math.abs(fInt - targetFrameInt);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closestIdx = i;
+        }
+      }
+
+      if (closestIdx === -1) {
+        showToast("Could not locate adjacent frames in manifest.", "error");
+        return;
+      }
+
+      // 4. Slice topK adjacent frames centered around closestIdx
+      const start = Math.max(0, closestIdx - Math.floor((topKVal - 1) / 2));
+      const end = Math.min(manifest.length, start + topKVal);
+      // Adjust start if end is capped at manifest.length
+      const finalStart = Math.max(0, end - topKVal);
+      const slicedFrames = manifest.slice(finalStart, end);
+
+      // 5. Build results objects (ext defaults to .webp)
+      const results = slicedFrames.map((frameId, idx) => {
+        const item = resolveFrameByVideoCode(videoIdQuery, frameId, ".webp");
+        item.index = idx;
+        return item;
+      });
+
+      const grouped = groupProcessedResults(results);
+
+      // 6. Save current inputs before switching to the new tab
+      saveCurrentInputsToTab();
+
+      // 7. Create a new search tab with these results
+      const newTab = tabState.createTabWithData({
+        title: `${videoIdQuery} - F:${frameIdQuery}`,
+        query: `[Filter Search: ${videoIdQuery} - F:${frameIdQuery}]`,
+        searchResults: results,
+        groupedResults: grouped,
+        topK: topKVal,
+      });
+
+      // 8. Restore the new tab to UI and update grid
+      restoreTabToUI(newTab);
+      refreshTabBar();
+
+      showToast(`Loaded ${results.length} adjacent frames in new tab.`, "success");
+
+      // 9. Auto open video if checked (use closest matching frame ID from manifest)
+      if (shouldOpenVideo) {
+        const closestFrameId = manifest[closestIdx];
+        console.log(`[FilterSearch] Auto opening video for ${videoIdQuery} at frame ${closestFrameId}`);
+        openVideoWindow(videoIdQuery, closestFrameId);
+      }
+
+    } catch (err) {
+      console.error("Filter Search error:", err);
+      showToast(`Error performing Filter Search: ${err.message}`, "error");
+    }
+  }
+
+  if (filterSearchBtn) {
+    filterSearchBtn.addEventListener("click", performFilterSearch);
+  }
+
+  [filterVideoId, filterFrameId].forEach(input => {
+    if (input) {
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          performFilterSearch();
+        }
+      });
+    }
   });
 
   /* ── History panel ── */

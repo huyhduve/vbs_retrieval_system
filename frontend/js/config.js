@@ -13,10 +13,13 @@ const CONFIG = Object.freeze({
     // "https://eating-stingily-sponge.ngrok-free.dev",
     // "https://eating-stingily-sponge.ngrok-free.dev",
     // "https://eating-stingily-sponge.ngrok-free.dev",
-      "http://127.0.0.1:8000", 
-      "http://127.0.0.1:8000",
+      // "http://127.0.0.1:8000", 
+      // 
+      // 
+      // "https://madonna-yards-fisheries-cartridges.trycloudflare.com",
+      // "https://madonna-yards-fisheries-cartridges.trycloudflare.com",
       "http://127.0.0.1:8000"
-  
+      
   ],
 
   ENDPOINTS: {
