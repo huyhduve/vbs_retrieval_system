@@ -37,6 +37,57 @@ function showToast(message, type = "info") {
   }, 3000);
 }
 
+/* ──────────────── ASR Tooltip ──────────────── */
+
+let _asrTooltipEl = null;
+
+function initAsrTooltip() {
+  if (_asrTooltipEl) return;
+  _asrTooltipEl = document.createElement("div");
+  _asrTooltipEl.id = "asr-tooltip";
+  _asrTooltipEl.className = "asr-tooltip";
+  document.body.appendChild(_asrTooltipEl);
+}
+
+function showAsrTooltip(text, x, y) {
+  if (!_asrTooltipEl) initAsrTooltip();
+  _asrTooltipEl.textContent = text;
+  _asrTooltipEl.classList.add("visible");
+  updateAsrTooltipPosition(x, y);
+}
+
+function updateAsrTooltipPosition(x, y) {
+  if (!_asrTooltipEl) return;
+  const offset = 15;
+  let left = x + offset;
+  let top = y + offset;
+
+  // Prevent off-screen positioning
+  const rect = _asrTooltipEl.getBoundingClientRect();
+  if (left + rect.width > window.innerWidth) {
+    left = x - rect.width - offset;
+  }
+  if (top + rect.height > window.innerHeight) {
+    top = y - rect.height - offset;
+  }
+
+  _asrTooltipEl.style.left = `${Math.max(0, left)}px`;
+  _asrTooltipEl.style.top = `${Math.max(0, top)}px`;
+}
+
+function hideAsrTooltip() {
+  if (_asrTooltipEl) {
+    _asrTooltipEl.classList.remove("visible");
+  }
+}
+
+// Auto init DOMContentLoaded
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initAsrTooltip);
+} else {
+  initAsrTooltip();
+}
+
 /* ──────────────── Image Grid ──────────────── */
 
 /**
@@ -93,6 +144,36 @@ function renderGrid(groups) {
       card.appendChild(img);
       card.appendChild(label);
       card.addEventListener("click", () => openPreview(idx));
+
+      // ASR Tooltip Hover Handlers
+      let isMouseOver = false;
+      card.addEventListener("mouseenter", async (e) => {
+        isMouseOver = true;
+        showAsrTooltip("Loading ASR...", e.clientX, e.clientY);
+        
+        try {
+          const asrText = await getAsrTextForFrame(item.videoCode, item.frameNumber);
+          if (isMouseOver) {
+            showAsrTooltip(asrText || "No ASR transcript available", e.clientX, e.clientY);
+          }
+        } catch (err) {
+          if (isMouseOver) {
+            showAsrTooltip("Error loading ASR", e.clientX, e.clientY);
+          }
+        }
+      });
+
+      card.addEventListener("mousemove", (e) => {
+        if (isMouseOver) {
+          updateAsrTooltipPosition(e.clientX, e.clientY);
+        }
+      });
+
+      card.addEventListener("mouseleave", () => {
+        isMouseOver = false;
+        hideAsrTooltip();
+      });
+
       strip.appendChild(card);
     });
 
@@ -138,6 +219,7 @@ class PreviewWindow {
     this.setupDragging();
     this.setupEvents();
     this.updateTimeMs();
+    this.updateAsrText();
     this.focus();
   }
 
@@ -186,10 +268,6 @@ class PreviewWindow {
               <span class="preview-info-timems preview-info__value">—</span>
             </div>
             <div class="preview-info__group">
-              <span class="preview-info__label">OCR Text</span>
-              <span class="preview-info-ocr preview-info__value preview-info__value--text">${this.previewItem.ocrText || "—"}</span>
-            </div>
-            <div class="preview-info__group">
               <span class="preview-info__label">ASR Text</span>
               <span class="preview-info-asr preview-info__value preview-info__value--text">${this.previewItem.asrText || "—"}</span>
             </div>
@@ -219,7 +297,6 @@ class PreviewWindow {
     this.imageEl = winEl.querySelector(".preview-image");
     this.infoVideoFrameEl = winEl.querySelector(".preview-info-videoframe");
     this.infoTimeMsEl = winEl.querySelector(".preview-info-timems");
-    this.infoOcrEl = winEl.querySelector(".preview-info-ocr");
     this.infoAsrEl = winEl.querySelector(".preview-info-asr");
     this.similarityBtn = winEl.querySelector(".preview-similarity-btn");
     this.submitBtn = winEl.querySelector(".preview-submit-btn");
@@ -370,7 +447,6 @@ class PreviewWindow {
     this.imageEl.src = this.previewItem.url;
     this.imageEl.alt = this.previewItem.displayLabel;
     this.infoVideoFrameEl.textContent = `${this.previewItem.videoCode} - ${this.previewItem.frameNumber}`;
-    this.infoOcrEl.textContent = this.previewItem.ocrText || "—";
     this.infoAsrEl.textContent = this.previewItem.asrText || "—";
 
     const isAdj = this.previewItem.frameNumber !== currentResults[this.resultIndex]?.frameNumber;
@@ -379,6 +455,7 @@ class PreviewWindow {
       : `${this.resultIndex + 1} / ${currentResults.length}`;
 
     this.updateTimeMs();
+    this.updateAsrText();
   }
 
   async updateTimeMs() {
@@ -389,6 +466,26 @@ class PreviewWindow {
     if (this.previewItem && this.previewItem.videoCode === targetVideoCode && this.previewItem.frameNumber === targetFrameNumber) {
       const timeMs = calculateFrameMs(targetFrameNumber, fps);
       this.infoTimeMsEl.textContent = `${timeMs}`;
+    }
+  }
+
+  async updateAsrText() {
+    if (!this.infoAsrEl) return;
+    this.infoAsrEl.textContent = "Loading ASR...";
+
+    const targetVideoCode = this.previewItem.videoCode;
+    const targetFrameNumber = this.previewItem.frameNumber;
+    try {
+      const text = await getAsrTextForFrame(targetVideoCode, targetFrameNumber);
+      if (this.previewItem && this.previewItem.videoCode === targetVideoCode && this.previewItem.frameNumber === targetFrameNumber) {
+        const displayText = text || "No ASR transcript available";
+        this.infoAsrEl.textContent = displayText;
+        this.previewItem.asrText = displayText;
+      }
+    } catch (err) {
+      if (this.previewItem && this.previewItem.videoCode === targetVideoCode && this.previewItem.frameNumber === targetFrameNumber) {
+        this.infoAsrEl.textContent = "Error loading ASR";
+      }
     }
   }
 

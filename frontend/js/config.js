@@ -24,6 +24,7 @@ const CONFIG = Object.freeze({
 
   ENDPOINTS: {
     SEARCH: "/api/v1/search",
+    SIM_SEARCH: "/api/v1/search/sim",
     SEARCH_IMAGE: "/api/v1/search/image",
     HEALTH: "/api/v1/health",
     SUBMIT: "/api/v1/submit",

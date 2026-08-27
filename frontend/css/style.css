@@ -1929,3 +1929,31 @@ input:checked + .slider:before {
   transform: translateX(18px);
   background-color: #fff;
 }
+
+/* ASR Tooltip */
+.asr-tooltip {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  background: rgba(17, 24, 39, 0.95);
+  border: 1px solid var(--accent);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  max-width: 320px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 10px var(--accent-glow);
+  font-family: "Inter", sans-serif;
+  line-height: 1.4;
+  word-break: break-word;
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+}
+
+.asr-tooltip.visible {
+  opacity: 1;
+  visibility: visible;
+}
+

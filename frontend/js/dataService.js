@@ -371,3 +371,52 @@ function formatTimestamp(seconds) {
 
 // Prefetch FPS map in background on load
 fetchFpsMap();
+
+/* ──────────────── ASR Data Fetching ──────────────── */
+
+const _asrCache = new Map();
+
+/**
+ * Fetch and cache ASR JSON data for a video from ./asr_data/{videoCode}.json
+ *
+ * @param {string} videoCode - e.g. "L21_V001"
+ * @returns {Promise<object | null>} Map of frame -> asr item
+ */
+async function fetchVideoAsrData(videoCode) {
+  if (_asrCache.has(videoCode)) {
+    return _asrCache.get(videoCode);
+  }
+
+  const url = `./asr_data/${videoCode}.json`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn(`[AsrService] ASR JSON not found for "${videoCode}" (HTTP ${res.status}) at ${url}`);
+      _asrCache.set(videoCode, null);
+      return null;
+    }
+    const data = await res.json();
+    _asrCache.set(videoCode, data);
+    return data;
+  } catch (err) {
+    console.error(`[AsrService] Error fetching ASR data for "${videoCode}" from ${url}:`, err);
+    _asrCache.set(videoCode, null);
+    return null;
+  }
+}
+
+/**
+ * Retrieve ASR text for a specific frame number in a video.
+ *
+ * @param {string} videoCode
+ * @param {string} frameNumber
+ * @returns {Promise<string>}
+ */
+async function getAsrTextForFrame(videoCode, frameNumber) {
+  const cleanFrame = String(frameNumber).replace(/\.\w+$/, "");
+  const asrData = await fetchVideoAsrData(videoCode);
+  if (!asrData) return "";
+  const item = asrData[cleanFrame];
+  return item ? (item.text || "") : "";
+}
+

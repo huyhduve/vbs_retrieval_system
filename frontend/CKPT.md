@@ -217,8 +217,7 @@ frontend_dev/
 - **Sidebar thông tin:**
   - Video-Frame: `.preview-info-videoframe`
   - Time (ms): `.preview-info-timems` (Tra cứu FPS và cập nhật tự động bằng `updateTimeMs()`).
-  - OCR Text: `.preview-info-ocr`
-  - ASR Text: `.preview-info-asr`
+  - ASR Text: `.preview-info-asr` (Tải động từ file JSON `./asr_data/{videoCode}.json` qua `updateAsrText()`).
   - Nút Similarity Search: `.preview-similarity-btn` (Gửi request `image_id` và bắn event `similaritySearchComplete`).
   - Nút Submit: `.preview-submit-btn` (Gọi `handleSubmit`).
 - **Điều hướng & Frame Lân cận:**

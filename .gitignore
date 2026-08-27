@@ -17,7 +17,7 @@ data/
 check_milvus*
 
 # frontends
-frontendv*/
+frontend/asr_data/
 frontend_*/
 
 # hf_cache 
