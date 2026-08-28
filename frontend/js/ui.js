@@ -268,7 +268,7 @@ class PreviewWindow {
               <span class="preview-info-timems preview-info__value">—</span>
             </div>
             <div class="preview-info__group">
-              <span class="preview-info__label">ASR Text</span>
+              <span class="preview-info__label">Context Summary</span>
               <span class="preview-info-asr preview-info__value preview-info__value--text">${this.previewItem.asrText || "—"}</span>
             </div>
             <button class="preview-submit-btn">Submit</button>
