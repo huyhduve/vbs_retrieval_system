@@ -36,6 +36,7 @@
         imagePreviewUrl: null,
         weights: { score_text: 0.5, score_ocr: 0.5, score_asr: 0.5 },
         topK: 100,
+        rrf: false,
         searchResults: [],     // flat processed array (used by preview navigator)
         groupedResults: [],    // grouped array (used by renderGrid)
         trakeBasket: [],       // placeholder — TRAKE not yet implemented

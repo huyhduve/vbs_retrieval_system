@@ -210,6 +210,7 @@ document.addEventListener("DOMContentLoaded", () => {
    * Snapshot all current DOM input values into the active tab object.
    */
   function saveCurrentInputsToTab() {
+    const rrfToggle = document.getElementById("topk-rrf-toggle");
     tabState.saveTabState({
       query: searchInput.value,
       asr:   asrInput.value,
@@ -222,6 +223,7 @@ document.addEventListener("DOMContentLoaded", () => {
         score_ocr:  Number(document.getElementById("score-ocr").value),
         score_asr:  Number(document.getElementById("score-asr").value),
       },
+      rrf: rrfToggle ? rrfToggle.checked : false,
     });
   }
 
@@ -253,6 +255,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // Top-K
     topKSlider.value      = tab.topK;
     topKValue.textContent = tab.topK;
+
+    const rrfToggle = document.getElementById("topk-rrf-toggle");
+    if (rrfToggle) {
+      rrfToggle.checked = tab.rrf || false;
+    }
 
     // Weight sliders
     document.getElementById("score-text").value = tab.weights.score_text;
@@ -399,6 +406,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const topK = parseInt(topKSlider.value, 10);
+    const rrfToggle = document.getElementById("topk-rrf-toggle");
+    const isRrfEnabled = rrfToggle ? rrfToggle.checked : false;
     currentQuery = query || (hasImage ? `[Image Search]` : "");
     setLoading(true);
 
@@ -415,6 +424,7 @@ document.addEventListener("DOMContentLoaded", () => {
           asr,
           asrScore:  scores.score_asr,
           topK,
+          RRF: isRrfEnabled,
         });
       }
 
@@ -435,6 +445,7 @@ document.addEventListener("DOMContentLoaded", () => {
         imagePreviewUrl: currentImagePreviewUrl,
         topK,
         weights: { ...scores },
+        rrf: isRrfEnabled,
       });
 
       if (currentResults.length === 0) {

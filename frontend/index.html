@@ -68,11 +68,20 @@
               </div>
               <input id="ocr-input" class="search-bar__input" type="text" placeholder="Enter text detected in image…" autocomplete="off" />
             </div>
-            <div class="search-bar__topk">
-              <label for="topk-slider">Top-K:</label>
-              <div class="search-bar__topk-row">
-                <input id="topk-slider" type="range" />
-                <span id="topk-value" class="search-bar__topk-val"></span>
+            <div class="search-bar__topk-layout" style="display: flex; gap: 16px; align-items: flex-start;">
+              <div class="search-bar__topk" style="flex: 1;">
+                <label for="topk-slider">Top-K:</label>
+                <div class="search-bar__topk-row">
+                  <input id="topk-slider" type="range" />
+                  <span id="topk-value" class="search-bar__topk-val"></span>
+                </div>
+              </div>
+              <div class="search-bar__rrf-container" style="display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0;">
+                <span style="color: var(--text-secondary); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; line-height: 1.2;">WR | RRF</span>
+                <label class="switch" style="margin-top: 2px;">
+                  <input type="checkbox" id="topk-rrf-toggle">
+                  <span class="slider round"></span>
+                </label>
               </div>
             </div>
             <div class="search-field search-field--image">
@@ -203,12 +212,12 @@
   <!-- ════════ Scripts (order matters) ════════ -->
   <script src="https://www.youtube.com/iframe_api"></script>
   <script src="./js/config.js?v=67"></script>
-  <script src="./js/apiService.js?v=67"></script>
+  <script src="./js/apiService.js?v=68"></script>
   <script src="./js/dataService.js?v=68"></script>
   <script src="./js/submitService.js?v=67"></script>
-  <script src="./js/tabState.js?v=67"></script>
+  <script src="./js/tabState.js?v=68"></script>
   <script src="./js/ui.js?v=70"></script>
-  <script src="./js/app.js?v=67"></script>
+  <script src="./js/app.js?v=68"></script>
 
 </body>
 </html>

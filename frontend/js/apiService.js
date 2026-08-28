@@ -36,6 +36,7 @@ async function searchImages(searchInput) {
       asr: searchInput.asr,
       asr_score: searchInput.asrScore,
       top_k: searchInput.topK,
+      RRF: searchInput.RRF,
     }),
   });
 
