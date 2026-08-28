@@ -3,19 +3,31 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 import os
 
-from core.siglip_engine import SigLIP2Encoder
+from core.text_visual import SigLIP2Encoder
+from core.asr import Vietnamesev2Encoder
+
 from contextlib import asynccontextmanager
 from milvus.connection import get_client
 from api.router import api_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("\n [FastAPI Lifespan] Bắt đầu khởi động server...")
-    encoder = SigLIP2Encoder(ckpt=settings.MODEL_CKPT)
-    app.state.encoder = encoder
+    print("\n[FastAPI Lifespan] Bắt đầu khởi động server...")
+
+    image_text_encoder = SigLIP2Encoder(ckpt=settings.MODEL_CKPT)
+    app.state.image_text_encoder = image_text_encoder
+    print("\n[Siglip2Engine] Đã load model Siglip2")
+
+    asr_text_encoder = Vietnamesev2Encoder(ckpt=settings.ASR_MODEL_CKPT)
+    app.state.asr_text_encoder = asr_text_encoder
+    print("\n[VietnameseV2] Đã load model Vietnamese_EmbeddingV2")
+
+
     app.state.client = get_client()
-    print(f"\n load collection '{settings.MILVUS_COLLECTION}' vào bộ nhớ RAM...")
-    app.state.client.load_collection(collection_name=settings.MILVUS_COLLECTION)
+    print(f"\n load collection '{settings.ASR_COLLECTION}' vào bộ nhớ RAM...")
+    app.state.client.load_collection(collection_name=settings.ASR_COLLECTION)
+    print(f"\n load collection '{settings.IMAGE_COLLECTION}' vào bộ nhớ RAM...")
+    app.state.client.load_collection(collection_name=settings.IMAGE_COLLECTION)
     yield
 
     app.state.client.close()

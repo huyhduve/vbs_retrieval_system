@@ -55,7 +55,7 @@ async function searchImages(searchInput) {
  */
 async function searchSimilarImages(imageId) {
   const base = getRandomBaseUrl();
-  const url = `${base}${CONFIG.ENDPOINTS.SEARCH}`;
+  const url = `${base}${CONFIG.ENDPOINTS.SIM_SEARCH}`;
   console.log(`[API] searchSimilarImages → ${url} with image_id: ${imageId}`);
 
   const response = await fetch(url, {

@@ -27,17 +27,17 @@ def _format_milvus_res():
                                 asr_text="day la vi du asr" 
                             ), 
                             ImageResult(
-                                image_id="L21_V001/19.webp",
+                                image_id="L21_V001/3368.webp",
                                 ocr_text="day la vi du ocr", 
                                 asr_text="day la vi du asr" 
                             ), 
                             ImageResult(
-                                image_id="L21_V001/324.webp",
+                                image_id="L21_V001/8954.webp",
                                 ocr_text="day la vi du ocr", 
                                 asr_text="day la vi du asr" 
                             ), 
                             ImageResult(
-                                image_id="L21_V001/403.webp",
+                                image_id="L21_V001/10265.webp",
                                 ocr_text="day la vi du ocr", 
                                 asr_text="day la vi du asr" 
                             ), 
@@ -59,7 +59,7 @@ def _format_milvus_res():
                                         asr_text="day la vi du asr" 
                                     ), 
                                     ImageResult(
-                                        image_id="L21_V002/2541.webp",
+                                        image_id="L21_V002/5673.webp",
                                         ocr_text="day la vi du ocr", 
                                         asr_text="day la vi du asr" 
                                     ), 
@@ -72,6 +72,10 @@ def _format_milvus_res():
 
 
 @router.post("/search", response_model=ImageSearchResponse)
+def text_base_search(query: QueryRequest | SimSearchRequest, requests: Request):
+    return _format_milvus_res()
+
+@router.post("/search/sim", response_model=ImageSearchResponse)
 def text_base_search(query: QueryRequest | SimSearchRequest, requests: Request):
     return _format_milvus_res()
     
