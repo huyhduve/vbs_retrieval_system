@@ -192,7 +192,7 @@ function updateResultCount(count) {
 let _highestZIndex = 1000;
 const openPreviewWindows = new Map(); // winId -> PreviewWindow instance
 let _activePreviewWindow = null;
-const STRIP_WINDOW = 7;
+const STRIP_WINDOW = 24; // 6 rows × 4 cols
 
 /**
  * Returns the currently active preview item from the focused window.
@@ -212,6 +212,7 @@ class PreviewWindow {
     this.stripVisible = false;
     this.stripFrameList = null;
     this.stripCurrentIndex = -1;
+    this.stripViewOffset = 0;
     this.stripVideoCode = null;
     this.stripExt = item.fileName ? (item.fileName.match(/\.\w+$/)?.[0] || ".webp") : ".webp";
 
@@ -246,7 +247,7 @@ class PreviewWindow {
               ▶ Show Video
             </button>
             <button class="preview-similarity-btn" title="Search similar images by Image ID">🔍 Similarity Search</button>
-            <button class="adj-strip-toggle" title="Toggle adjacent frame strip">
+            <button class="adj-strip-toggle" title="Toggle adjacent frame grid">
               👁️ Show Neighbor Frames
             </button>
             <button class="preview-panel__close" title="Close Window">✕</button>
@@ -274,12 +275,17 @@ class PreviewWindow {
             <button class="preview-submit-btn">Submit</button>
           </aside>
         </div>
-        <!-- ── Adjacent Frame Strip ── -->
-        <div class="adj-strip-wrapper" hidden>
-          <button class="adj-strip-nav adj-strip-prev" title="Shift strip left (earlier frames)">◀</button>
-          <div class="adj-strip-frames"></div>
-          <button class="adj-strip-nav adj-strip-next" title="Shift strip right (later frames)">▶</button>
+      </div>
+      <!-- ── Neighbor Frame Grid Panel (right side) ── -->
+      <div class="adj-strip-panel" hidden>
+        <div class="adj-strip-panel__header">
+          <span class="adj-strip-panel__title">👁️ Neighbor Frames</span>
+          <div class="adj-strip-panel__nav-row">
+            <button class="adj-strip-nav adj-strip-prev" title="Shift to earlier frames">◀</button>
+            <button class="adj-strip-nav adj-strip-next" title="Shift to later frames">▶</button>
+          </div>
         </div>
+        <div class="adj-strip-frames"></div>
       </div>
     `;
 
@@ -301,7 +307,7 @@ class PreviewWindow {
     this.similarityBtn = winEl.querySelector(".preview-similarity-btn");
     this.submitBtn = winEl.querySelector(".preview-submit-btn");
 
-    this.stripWrapperEl = winEl.querySelector(".adj-strip-wrapper");
+    this.stripWrapperEl = winEl.querySelector(".adj-strip-panel");
     this.stripPrevBtn = winEl.querySelector(".adj-strip-prev");
     this.stripFramesEl = winEl.querySelector(".adj-strip-frames");
     this.stripNextBtn = winEl.querySelector(".adj-strip-next");
@@ -366,6 +372,13 @@ class PreviewWindow {
     this.toggleBtn.addEventListener("click", () => this.toggleStrip());
     this.stripPrevBtn.addEventListener("click", () => this.shiftStrip(-1));
     this.stripNextBtn.addEventListener("click", () => this.shiftStrip(1));
+
+    // Mouse wheel inside the neighbor grid panel → scroll prev/next by one row
+    this.stripWrapperEl.addEventListener("wheel", (e) => {
+      if (!this.stripVisible) return;
+      e.preventDefault();
+      this.shiftStrip(e.deltaY > 0 ? 1 : -1);
+    }, { passive: false });
 
     if (this.showVideoBtn) {
       this.showVideoBtn.addEventListener("click", () => {
@@ -502,6 +515,7 @@ class PreviewWindow {
 
   updateStripVisibility() {
     this.stripWrapperEl.hidden = !this.stripVisible;
+    this.winEl.classList.toggle("preview-window-floating--strip-open", this.stripVisible);
     this.toggleBtn.classList.toggle("adj-strip-toggle--active", this.stripVisible);
     this.toggleBtn.textContent = this.stripVisible ? "👁️ Hide Neighbor Frames" : "👁️ Show Neighbor Frames";
   }
@@ -540,16 +554,21 @@ class PreviewWindow {
       this.stripCurrentIndex = 0;
     }
 
+    // Center the viewport around the anchor frame
+    const half = Math.floor(STRIP_WINDOW / 2);
+    this.stripViewOffset = Math.max(
+      0,
+      Math.min(this.stripCurrentIndex - half, this.stripFrameList.length - STRIP_WINDOW)
+    );
+
     this.renderStripThumbnails();
-    this.stripPrevBtn.disabled = this.stripCurrentIndex <= 0;
-    this.stripNextBtn.disabled = this.stripCurrentIndex >= this.stripFrameList.length - 1;
   }
 
   renderStripThumbnails() {
     this.stripFramesEl.innerHTML = "";
 
-    const half = Math.floor(STRIP_WINDOW / 2);
-    const startIdx = Math.max(0, this.stripCurrentIndex - half);
+    // Use the independent viewport offset (not centered on active frame)
+    const startIdx = this.stripViewOffset;
     const endIdx = Math.min(this.stripFrameList.length, startIdx + STRIP_WINDOW);
     const slice = this.stripFrameList.slice(startIdx, endIdx);
 
@@ -580,6 +599,10 @@ class PreviewWindow {
       thumb.addEventListener("click", () => this.selectAdjacentFrame(frameData, absoluteIdx));
       this.stripFramesEl.appendChild(thumb);
     });
+
+    // Update nav buttons based on viewport position (not selected frame)
+    this.stripPrevBtn.disabled = this.stripViewOffset <= 0;
+    this.stripNextBtn.disabled = this.stripViewOffset + STRIP_WINDOW >= this.stripFrameList.length;
   }
 
   selectAdjacentFrame(frameData, manifestIdx) {
@@ -594,22 +617,25 @@ class PreviewWindow {
     this.stripCurrentIndex = manifestIdx;
     this.updateContent();
 
+    // Re-render to update the active highlight — viewport stays where it is
     if (this.stripVisible && this.stripFrameList) {
       this.renderStripThumbnails();
-      this.stripPrevBtn.disabled = this.stripCurrentIndex <= 0;
-      this.stripNextBtn.disabled = this.stripCurrentIndex >= this.stripFrameList.length - 1;
     }
   }
 
   shiftStrip(direction) {
     if (!this.stripFrameList) return;
 
-    const newIdx = this.stripCurrentIndex + direction;
-    if (newIdx < 0 || newIdx >= this.stripFrameList.length) return;
+    // Shift viewport by one row (4 columns) per click — no frame selection change
+    const ROW_SIZE = 4;
+    const newOffset = this.stripViewOffset + direction * ROW_SIZE;
+    if (newOffset < 0 || newOffset >= this.stripFrameList.length) return;
 
-    this.stripCurrentIndex = newIdx;
-    const frameData = resolveFrameByVideoCode(this.stripVideoCode, this.stripFrameList[newIdx], this.stripExt);
-    this.selectAdjacentFrame(frameData, newIdx);
+    this.stripViewOffset = Math.min(
+      Math.max(0, newOffset),
+      Math.max(0, this.stripFrameList.length - STRIP_WINDOW)
+    );
+    this.renderStripThumbnails();
   }
 
   close() {

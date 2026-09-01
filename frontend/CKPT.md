@@ -35,7 +35,7 @@
 | **Gộp 2 Tab (Merge Tabs)** | `js/tabState.js`<br>`js/ui.js`<br>`js/app.js` | `mergeTabResults(idA, idB)`, `openMergeModal()` | `.tab-merge-btn`, `#merge-modal`, `#merge-select-a`, `#merge-select-b`, `#merge-confirm` |
 | **Grid Ảnh (Gom nhóm theo Video)** | `js/ui.js`<br>`js/dataService.js` | `renderGrid(groups)`, `processSearchResultsGrouped()` | `#image-grid`, `.grid-group-row`, `.grid-group-strip`, `.grid-card` |
 | **Cửa sổ Preview nổi (Floating Modal)** | `js/ui.js` | `class PreviewWindow`, `openPreview(index)` | `#preview-windows-container`, `.preview-window-floating`, `.preview-panel` |
-| **Xem Frame lân cận (Neighbor Strip)** | `js/ui.js`<br>`js/dataService.js` | `PreviewWindow.renderStrip()`, `fetchVideoFrameList(videoCode)` | `.adj-strip-toggle`, `.adj-strip-wrapper`, `.adj-strip-frames`, `.adj-thumb` |
+| **Xem Frame lân cận (Neighbor Grid)** | `js/ui.js`<br>`js/dataService.js` | `PreviewWindow.renderStrip()`, `fetchVideoFrameList(videoCode)` | `.adj-strip-toggle`, `.adj-strip-panel`, `.adj-strip-panel__header`, `.adj-strip-frames`, `.adj-thumb` |
 | **Trường Time (ms) trong Preview** | `js/ui.js`<br>`js/dataService.js` | `PreviewWindow.updateTimeMs()`, `calculateFrameMs(frame, fps)` | `.preview-info-timems`, `video_fps.csv` |
 | **Similarity Search từ Preview** | `js/apiService.js`<br>`js/ui.js`<br>`js/app.js` | `searchSimilarImages(imageId)`, `PreviewWindow.setupEvents()` | `.preview-similarity-btn`, Event: `similaritySearchComplete` |
 | **Nộp kết quả lên DRES (Submit)** | `js/submitService.js`<br>`js/ui.js` | `handleSubmit(imageData, query)`, `submitToBackend(payload)` | `.preview-submit-btn`, `#history-modal`, `#history-list` |
@@ -222,7 +222,7 @@ frontend_dev/
   - Nút Submit: `.preview-submit-btn` (Gọi `handleSubmit`).
 - **Điều hướng & Frame Lân cận:**
   - Nút ◀ / ▶: `navigateResult(-1)` / `navigateResult(1)`.
-  - Nút `👁️ Show Neighbor Frames` (`.adj-strip-toggle`): Mở dải frame lân cận (`.adj-strip-wrapper`, cửa sổ trượt 7 frame `STRIP_WINDOW = 7`).
+  - Nút `👁️ Show Neighbor Frames` (`.adj-strip-toggle`): Mở panel lưới 6×6 frame lân cận nằm **bên phải** của preview window (`.adj-strip-panel`). `STRIP_WINDOW = 36` (6×6 = 36 frame). Panel bật thêm class `.preview-window-floating--strip-open` để mở rộng chiều rộng cửa sổ (lên đến 1260px). Nút ◀ / ▶ nằm trong header của panel (`adj-strip-panel__header`), nhấn để shift window theo từng frame.
   - Nút `▶ Show Video` (`.show-video-btn`): Mở cửa sổ video YouTube.
 
 #### 4.6.3. Cửa sổ Video YouTube Nổi (`class VideoWindow`)
