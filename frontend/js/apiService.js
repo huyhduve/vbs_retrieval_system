@@ -37,6 +37,7 @@ async function searchImages(searchInput) {
       asr_score: searchInput.asrScore,
       top_k: searchInput.topK,
       RRF: searchInput.RRF,
+      topic: searchInput.topic || [],
     }),
   });
 
@@ -150,4 +151,53 @@ async function submitToBackend(payload) {
   }
 
   return response.json();
+}
+
+/**
+ * Call Google Gemini REST API asynchronously to generate content.
+ * @param {string} userPrompt - Prompt containing user query / context / topics.
+ * @param {string} [systemPrompt] - Optional system instruction.
+ * @returns {Promise<string>} Generated text from Gemini.
+ */
+async function callGeminiAPI(userPrompt, systemPrompt) {
+  const apiKey = CONFIG.GEMINI ? CONFIG.GEMINI.API_KEY : "";
+  const model = (CONFIG.GEMINI && CONFIG.GEMINI.MODEL) ? CONFIG.GEMINI.MODEL : "gemini-2.0-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  console.log(`[API] callGeminiAPI → model: ${model}`);
+
+  const sysInstruction = systemPrompt || (CONFIG.GEMINI ? CONFIG.GEMINI.SYSTEM_PROMPT : "");
+
+  const payload = {
+    contents: [
+      {
+        role: "user",
+        parts: [{ text: userPrompt }]
+      }
+    ]
+  };
+
+  if (sysInstruction) {
+    payload.system_instruction = {
+      parts: [{ text: sysInstruction }]
+    };
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Gemini API call failed (${response.status}): ${errorBody}`);
+  }
+
+  const data = await response.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    throw new Error("No suggestion text returned from Gemini API.");
+  }
+
+  return text;
 }

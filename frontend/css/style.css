@@ -40,7 +40,7 @@
   --error-soft:     rgba(239, 68, 68, 0.25);
 
   /* Sizing */
-  --header-height:       64px;
+  --header-height:       32px;
   --search-panel-width:  280px;
   --grid-gap:            2px;
   --radius-sm:           6px;
@@ -79,7 +79,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 0 16px;
   background: var(--bg-glass);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -87,7 +87,7 @@ body {
 }
 
 .header__title {
-  font-size: 1.25rem;
+  font-size: 1.05rem;
   font-weight: 700;
   background: linear-gradient(135deg, #818cf8, #6366f1, #a78bfa);
   -webkit-background-clip: text;
@@ -105,14 +105,14 @@ body {
 .header__history-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
+  gap: 4px;
+  padding: 3px 10px;
   background: var(--bg-card);
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
 }
 
@@ -120,6 +120,224 @@ body {
   background: var(--accent-soft);
   color: var(--text-primary);
   border-color: var(--accent);
+}
+
+.header__llm-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.header__llm-btn:hover {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.4);
+}
+
+.header__llm-btn:disabled,
+.header__llm-btn--loading {
+  opacity: 0.45 !important;
+  background: #334155 !important;
+  color: #94a3b8 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  pointer-events: none !important;
+}
+
+/* ── Floating Non-blocking LLM Response Modal ── */
+.llm-response-modal {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 420px;
+  max-width: 90vw;
+  max-height: 480px;
+  z-index: 10000;
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+}
+
+.llm-response-modal--visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.llm-response-card {
+  display: flex;
+  flex-direction: column;
+  background: rgba(18, 24, 42, 0.95);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 20px var(--accent-glow);
+  backdrop-filter: blur(16px);
+  overflow: hidden;
+}
+
+.llm-response-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(15, 23, 42, 0.85);
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.llm-response-card__title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #a78bfa;
+}
+
+.llm-response-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.llm-response-card__copy-btn,
+.llm-response-card__close-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.llm-response-card__copy-btn:hover {
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  border-color: var(--accent);
+}
+
+.llm-response-card__close-btn:hover {
+  background: var(--error);
+  color: #fff;
+  border-color: var(--error);
+}
+
+.llm-response-card__body {
+  padding: 12px 14px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.llm-response-card__text {
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
+
+.header-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.header__info-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.78rem;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.header__info-btn:hover,
+.header-dropdown:hover .header__info-btn {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+
+.header-dropdown__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 300px;
+  background: rgba(18, 24, 42, 0.96);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(99, 102, 241, 0.2);
+  padding: 14px;
+  z-index: 1000;
+  backdrop-filter: blur(16px);
+}
+
+.header-dropdown__menu[hidden] {
+  display: none !important;
+}
+
+.header-dropdown__section {
+  margin-bottom: 8px;
+}
+
+.header-dropdown__section:last-child {
+  margin-bottom: 0;
+}
+
+.header-dropdown__label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-hover);
+  margin-bottom: 3px;
+}
+
+.header-dropdown__text {
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.35);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  word-break: break-word;
+  max-height: 120px;
+  overflow-y: auto;
+  margin: 0;
+}
+
+.config-save-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 24px;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.config-save-btn:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 0 14px var(--accent-glow);
 }
 
 .result-count {
@@ -240,6 +458,30 @@ body {
   padding: 14px;
 }
 
+/* 1.5x height sizing for #card-config when expanded (keeps standard 14px field gap) */
+#card-config.accordion-card--expanded .accordion-card__content {
+  padding: 20px 14px 110px 14px;
+  gap: 14px;
+}
+
+#card-config #config-context-input {
+  min-height: 120px;
+}
+
+#card-config .custom-dropdown__button {
+  padding: 10px 12px;
+}
+
+#card-config .llm-btn-container {
+  margin-top: 6px;
+  margin-bottom: 6px;
+}
+
+#card-config .llm-suggestion-btn {
+  padding: 10px 24px;
+  font-size: 0.88rem;
+}
+
 .accordion-card__placeholder {
   font-size: 0.82rem;
   color: var(--text-muted);
@@ -248,6 +490,130 @@ body {
 }
 
 
+
+/* ── Custom Multi-select Dropdown & LLM Suggestion Button ── */
+.custom-dropdown {
+  position: relative;
+  width: 100%;
+}
+
+.custom-dropdown__button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.custom-dropdown__button:hover {
+  border-color: var(--accent);
+  background: rgba(30, 41, 59, 0.7);
+}
+
+.custom-dropdown__selected {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 88%;
+  color: var(--text-muted);
+}
+
+.custom-dropdown__selected--has-value {
+  color: var(--text-primary);
+}
+
+.custom-dropdown__arrow {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  transition: transform var(--transition-fast);
+}
+
+.custom-dropdown--open .custom-dropdown__arrow {
+  transform: rotate(180deg);
+}
+
+.custom-dropdown__menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #181c30;
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 100;
+  padding: 4px 0;
+}
+
+.custom-dropdown__menu[hidden] {
+  display: none !important;
+}
+
+.custom-dropdown__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition-fast);
+}
+
+.custom-dropdown__item:hover {
+  background: rgba(99, 102, 241, 0.15);
+}
+
+.custom-dropdown__item input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.llm-btn-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.llm-suggestion-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 20px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.llm-suggestion-btn:hover {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.4);
+  transform: translateY(-1px);
+}
+
+.llm-suggestion-btn:active {
+  transform: translateY(0);
+}
 
 .search-field {
   display: flex;
@@ -1477,9 +1843,128 @@ body {
   white-space: nowrap;
 }
 
+/* History Tabs */
+.history-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-glass);
+  background: var(--bg-primary);
+  padding: 0 12px;
+  gap: 4px;
+}
+
+.history-tab {
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.history-tab:hover {
+  color: var(--text-primary);
+}
+
+.history-tab--active {
+  color: var(--accent-hover);
+  border-bottom-color: var(--accent);
+}
+
+.history-tab-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+}
+
+.history-tab-panel[hidden] {
+  display: none !important;
+}
+
+/* LLM History Entry */
+.llm-history-entry {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  font-size: 0.8rem;
+  transition: border-color var(--transition-fast);
+}
+
+.llm-history-entry:hover {
+  border-color: var(--accent);
+}
+
+.llm-history-entry__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.llm-history-entry__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #a78bfa;
+}
+
+.llm-history-entry__time {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.llm-history-entry__context {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.llm-history-entry__body {
+  color: var(--text-primary);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 100px;
+  overflow-y: auto;
+  margin-bottom: 6px;
+}
+
+.llm-history-entry__actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.llm-history-entry__copy-btn {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.llm-history-entry__copy-btn:hover {
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  border-color: var(--accent);
+}
+
+
 /* ─────────────────────────────────────────────────────
    Toasts
 ───────────────────────────────────────────────────── */
+
 #toast-container {
   position: fixed;
   top: 80px;

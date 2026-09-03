@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet" />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="./css/style.css?v=73" />
+  <link rel="stylesheet" href="./css/style.css?v=82" />
 </head>
 <body>
 
@@ -21,6 +21,93 @@
     <h1 class="header__title">⚡NSD WORM WEC</h1>
     <div class="header__actions">
       <span id="result-count" class="result-count"></span>
+
+      <!-- Config View Popover -->
+      <div class="header-dropdown" id="header-config-dropdown">
+        <button type="button" class="header__info-btn" id="header-config-btn">
+          ⚙️ Config
+        </button>
+        <div class="header-dropdown__menu" id="header-config-menu" hidden>
+          <div class="header-config-form">
+            <div class="search-field">
+              <div class="search-field__header">
+                <label for="config-context-input">Context</label>
+              </div>
+              <textarea id="config-context-input" class="search-bar__input" rows="3" placeholder="Enter context…"></textarea>
+            </div>
+            
+            <div class="search-field" style="margin-top: 10px;">
+              <div class="search-field__header">
+                <label>Topic</label>
+              </div>
+              <div class="custom-dropdown" id="topic-dropdown">
+                <button type="button" class="custom-dropdown__button" id="topic-dropdown-btn">
+                  <span class="custom-dropdown__selected" id="topic-dropdown-text">Select topics…</span>
+                  <span class="custom-dropdown__arrow">▼</span>
+                </button>
+                <div class="custom-dropdown__menu" id="topic-dropdown-menu" hidden>
+                  <label class="custom-dropdown__item">
+                    <input type="checkbox" class="topic-checkbox" value="Tin tức">
+                    <span>Tin tức</span>
+                  </label>
+                  <label class="custom-dropdown__item">
+                    <input type="checkbox" class="topic-checkbox" value="Công nghệ">
+                    <span>Công nghệ</span>
+                  </label>
+                  <label class="custom-dropdown__item">
+                    <input type="checkbox" class="topic-checkbox" value="Đua xe">
+                    <span>Đua xe</span>
+                  </label>
+                  <label class="custom-dropdown__item">
+                    <input type="checkbox" class="topic-checkbox" value="Múa lân">
+                    <span>Múa lân</span>
+                  </label>
+                  <label class="custom-dropdown__item">
+                    <input type="checkbox" class="topic-checkbox" value="Ẩm thực & Nấu ăn">
+                    <span>Ẩm thực & Nấu ăn</span>
+                  </label>
+                  <label class="custom-dropdown__item">
+                    <input type="checkbox" class="topic-checkbox" value="Bài giảng">
+                    <span>Bài giảng</span>
+                  </label>
+                  <label class="custom-dropdown__item">
+                    <input type="checkbox" class="topic-checkbox" value="Du lịch & Văn hóa">
+                    <span>Du lịch & Văn hóa</span>
+                  </label>
+                  <label class="custom-dropdown__item">
+                    <input type="checkbox" class="topic-checkbox" value="Ký sự & Đời sống">
+                    <span>Ký sự & Đời sống</span>
+                  </label>
+                  <label class="custom-dropdown__item">
+                    <input type="checkbox" class="topic-checkbox" value="General">
+                    <span>General</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="search-field" style="margin-top: 10px;">
+              <div class="search-field__header">
+                <label for="config-addition-input">Addition</label>
+              </div>
+              <textarea id="config-addition-input" class="search-bar__input" rows="2" placeholder="Enter additional details…"></textarea>
+            </div>
+
+            <div class="config-actions" style="display: flex; justify-content: center; margin-top: 12px;">
+              <button type="button" id="config-save-btn" class="config-save-btn">
+                💾 Save Config
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LLM Suggestion Button -->
+      <button type="button" id="llm-suggestion-btn" class="header__llm-btn">
+        ✨ LLM Suggestion
+      </button>
+
+      <!-- History Button -->
       <button id="history-btn" class="header__history-btn">📋History</button>
     </div>
   </header>
@@ -29,8 +116,6 @@
   <div class="app-layout">
     <!-- ════════ Search Bar ════════ -->
     <aside class="search-bar" id="search-panel">
-
-      <!-- Card 1: Multi-Modal Search (Expanded by default) -->
       <div class="accordion-card accordion-card--expanded" id="card-multimodal">
         <button type="button" class="accordion-card__header" aria-expanded="true" aria-controls="card-multimodal-body">
           <span class="accordion-card__title">Multi-Modal Search</span>
@@ -170,13 +255,24 @@
   <div id="history-modal" class="modal-overlay">
     <div class="history-panel">
       <div class="history-panel__header">
-        <h3>Submission History</h3>
+        <h3>📋 History</h3>
         <div class="history-panel__actions">
           <button id="history-clear-btn" class="history-panel__btn history-panel__btn--danger">Clear</button>
           <button id="history-close" class="history-panel__btn">Close</button>
         </div>
       </div>
-      <div id="history-list" class="history-list"></div>
+      <!-- Tab bar -->
+      <div class="history-tabs">
+        <button class="history-tab history-tab--active" data-tab="submissions">✅ Submissions</button>
+        <button class="history-tab" data-tab="llm">✨ LLM Responses</button>
+      </div>
+      <!-- Panels -->
+      <div id="history-panel-submissions" class="history-tab-panel">
+        <div id="history-list" class="history-list"></div>
+      </div>
+      <div id="history-panel-llm" class="history-tab-panel" hidden>
+        <div id="llm-history-list" class="history-list"></div>
+      </div>
     </div>
   </div>
 
@@ -211,13 +307,13 @@
 
   <!-- ════════ Scripts (order matters) ════════ -->
   <script src="https://www.youtube.com/iframe_api"></script>
-  <script src="./js/config.js?v=67"></script>
-  <script src="./js/apiService.js?v=69"></script>
+  <script src="./js/config.js?v=69"></script>
+  <script src="./js/apiService.js?v=71"></script>
   <script src="./js/dataService.js?v=68"></script>
   <script src="./js/submitService.js?v=67"></script>
-  <script src="./js/tabState.js?v=68"></script>
-  <script src="./js/ui.js?v=73"></script>
-  <script src="./js/app.js?v=68"></script>
+  <script src="./js/tabState.js?v=70"></script>
+  <script src="./js/ui.js?v=76"></script>
+  <script src="./js/app.js?v=81"></script>
 
 </body>
 </html>

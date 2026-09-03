@@ -34,23 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const filterSearchBtn  = document.getElementById("filter-search-btn");
 
   /* ── Accordion Cards Toggle ── */
-  const accordionCards = document.querySelectorAll(".accordion-card");
-
-  function updateAccordionStates() {
-    let hideRest = false;
-    accordionCards.forEach((card) => {
-      if (hideRest) {
-        card.classList.add("accordion-card--hidden");
-      } else {
-        card.classList.remove("accordion-card--hidden");
-        if (card.classList.contains("accordion-card--expanded")) {
-          hideRest = true;
-        }
-      }
-    });
-  }
-
-  accordionCards.forEach((card) => {
+  document.querySelectorAll(".accordion-card").forEach((card) => {
     const header = card.querySelector(".accordion-card__header");
     const icon   = card.querySelector(".accordion-card__icon");
 
@@ -68,12 +52,168 @@ document.addEventListener("DOMContentLoaded", () => {
         header.setAttribute("aria-expanded", "true");
         if (icon) icon.textContent = "▼";
       }
-      updateAccordionStates();
     });
   });
 
-  // Run initially to hide cards below any expanded card on page load
-  updateAccordionStates();
+  /* ── Config Card & Topic Dropdown Handler ── */
+  const topicDropdown = document.getElementById("topic-dropdown");
+  const topicDropdownBtn = document.getElementById("topic-dropdown-btn");
+  const topicDropdownMenu = document.getElementById("topic-dropdown-menu");
+  const topicDropdownText = document.getElementById("topic-dropdown-text");
+  const topicCheckboxes = document.querySelectorAll(".topic-checkbox");
+  const llmSuggestionBtn = document.getElementById("llm-suggestion-btn");
+  const configContextInput = document.getElementById("config-context-input");
+  const configAdditionInput = document.getElementById("config-addition-input");
+
+  function updateTopicDropdownText() {
+    if (!topicDropdownText) return;
+    const selected = Array.from(topicCheckboxes)
+      .filter((cb) => cb.checked)
+      .map((cb) => cb.value);
+
+    if (selected.length === 0) {
+      topicDropdownText.textContent = "Select topics…";
+      topicDropdownText.classList.remove("custom-dropdown__selected--has-value");
+    } else if (selected.length <= 2) {
+      topicDropdownText.textContent = selected.join(", ");
+      topicDropdownText.classList.add("custom-dropdown__selected--has-value");
+    } else {
+      topicDropdownText.textContent = `${selected.length} topics selected`;
+      topicDropdownText.classList.add("custom-dropdown__selected--has-value");
+    }
+  }
+
+  if (topicDropdownBtn && topicDropdownMenu) {
+    topicDropdownBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isHidden = topicDropdownMenu.hidden;
+      topicDropdownMenu.hidden = !isHidden;
+      topicDropdown.classList.toggle("custom-dropdown--open", isHidden);
+    });
+
+    topicCheckboxes.forEach((cb) => {
+      cb.addEventListener("change", () => {
+        updateTopicDropdownText();
+      });
+    });
+
+    document.addEventListener("click", (e) => {
+      if (topicDropdown && !topicDropdown.contains(e.target)) {
+        topicDropdownMenu.hidden = true;
+        topicDropdown.classList.remove("custom-dropdown--open");
+      }
+    });
+  }
+
+  /* ── Global Config Store ── */
+  window.globalConfig = {
+    context: "",
+    topics: [],
+    addition: "",
+  };
+
+  const configSaveBtn = document.getElementById("config-save-btn");
+  const headerConfigDropdown = document.getElementById("header-config-dropdown");
+  const headerConfigBtn = document.getElementById("header-config-btn");
+  const headerConfigMenu = document.getElementById("header-config-menu");
+
+  if (configSaveBtn) {
+    configSaveBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const contextText = configContextInput ? configContextInput.value.trim() : "";
+      const additionText = configAdditionInput ? configAdditionInput.value.trim() : "";
+      const selectedTopics = Array.from(topicCheckboxes)
+        .filter((cb) => cb.checked)
+        .map((cb) => cb.value);
+
+      window.globalConfig.context = contextText;
+      window.globalConfig.topics = selectedTopics;
+      window.globalConfig.addition = additionText;
+
+      showToast("💾 Config saved globally!", "success");
+      if (headerConfigMenu) headerConfigMenu.hidden = true;
+    });
+  }
+
+  if (headerConfigDropdown && headerConfigMenu) {
+    if (headerConfigBtn) {
+      headerConfigBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const willShow = headerConfigMenu.hidden;
+        headerConfigMenu.hidden = !willShow;
+
+        if (willShow) {
+          // Populate current global config when opening
+          if (configContextInput) configContextInput.value = window.globalConfig.context || "";
+          if (configAdditionInput) configAdditionInput.value = window.globalConfig.addition || "";
+          const globalTopics = window.globalConfig.topics || [];
+          topicCheckboxes.forEach((cb) => {
+            cb.checked = globalTopics.includes(cb.value);
+          });
+          updateTopicDropdownText();
+        }
+      });
+    }
+
+    // Prevent popover from closing when clicking inside it
+    headerConfigMenu.addEventListener("click", (e) => {
+      e.stopPropagation();
+    });
+
+    // Close popover when clicking outside
+    document.addEventListener("click", (e) => {
+      if (!headerConfigDropdown.contains(e.target)) {
+        headerConfigMenu.hidden = true;
+      }
+    });
+  }
+
+  if (llmSuggestionBtn) {
+    llmSuggestionBtn.addEventListener("click", async () => {
+      const contextText = window.globalConfig.context || (configContextInput ? configContextInput.value.trim() : "");
+      const additionText = window.globalConfig.addition || (configAdditionInput ? configAdditionInput.value.trim() : "");
+      const selectedTopics = window.globalConfig.topics.length > 0 
+        ? window.globalConfig.topics 
+        : Array.from(topicCheckboxes).filter((cb) => cb.checked).map((cb) => cb.value);
+
+      const topicStr = selectedTopics.join(", ") || "General";
+      const systemPrompt = CONFIG.GEMINI ? CONFIG.GEMINI.SYSTEM_PROMPT : "";
+      const userPromptTemplate = (CONFIG.GEMINI ? CONFIG.GEMINI.USER_PROMPT : "") || "Context: {context}\nTopic: {topics}\nAddition: {addition}";
+      const userPrompt = userPromptTemplate
+        .replace("{context}", contextText || "(Chưa có ngữ cảnh)")
+        .replace("{topics}", topicStr)
+        .replace("{addition}", additionText || "(Không có)");
+
+      // Disable button & dim appearance (non-blocking async request)
+      llmSuggestionBtn.disabled = true;
+      llmSuggestionBtn.classList.add("header__llm-btn--loading");
+      const originalText = llmSuggestionBtn.textContent;
+      llmSuggestionBtn.textContent = "⏳ Generating…";
+
+      showToast("✨ Sending request to Gemini LLM…", "info");
+
+      try {
+        const responseText = await callGeminiAPI(userPrompt, systemPrompt);
+        // Save to LLM history
+        saveLLMHistoryEntry({
+          timestamp: new Date().toISOString(),
+          context: contextText,
+          topics: selectedTopics,
+          addition: additionText,
+          response: responseText,
+        });
+        showLLMNotificationModal(responseText);
+        showToast("✅ LLM suggestion received!", "success");
+      } catch (err) {
+        console.error("[LLM Suggestion Error]", err);
+        showToast(`❌ LLM Error: ${err.message}`, "error");
+      } finally {
+        llmSuggestionBtn.disabled = false;
+        llmSuggestionBtn.classList.remove("header__llm-btn--loading");
+        llmSuggestionBtn.textContent = originalText;
+      }
+    });
+  }
 
 
 
@@ -106,7 +246,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (filterTopKSlider) {
     filterTopKSlider.min   = CONFIG.DEFAULTS.TOP_K_MIN;
     filterTopKSlider.max   = CONFIG.DEFAULTS.TOP_K_MAX;
-    filterTopKSlider.value = 20; // Default to a smaller window of 20 for adjacent frames
+    filterTopKSlider.value = 5; // Default to a smaller window of 20 for adjacent frames
     filterTopKValue.textContent = filterTopKSlider.value;
 
     filterTopKSlider.addEventListener("input", () => {
@@ -212,9 +352,9 @@ document.addEventListener("DOMContentLoaded", () => {
   function saveCurrentInputsToTab() {
     const rrfToggle = document.getElementById("topk-rrf-toggle");
     tabState.saveTabState({
-      query: searchInput.value,
-      asr:   asrInput.value,
-      ocr:   ocrInput.value,
+      query:   searchInput.value,
+      asr:     asrInput.value,
+      ocr:     ocrInput.value,
       imageFile: currentImageFile,
       imagePreviewUrl: currentImagePreviewUrl,
       topK:  parseInt(topKSlider.value, 10),
@@ -235,6 +375,19 @@ document.addEventListener("DOMContentLoaded", () => {
     // Clear Filter Search inputs
     if (filterVideoId) filterVideoId.value = "";
     if (filterFrameId) filterFrameId.value = "";
+
+    // Config Card inputs & Header Popover always reflect globalConfig across tab switches
+    if (configContextInput) {
+      configContextInput.value = window.globalConfig.context || "";
+    }
+    if (configAdditionInput) {
+      configAdditionInput.value = window.globalConfig.addition || "";
+    }
+    const globalTopics = window.globalConfig.topics || [];
+    topicCheckboxes.forEach((cb) => {
+      cb.checked = globalTopics.includes(cb.value);
+    });
+    updateTopicDropdownText();
 
     // Inputs
     searchInput.value = tab.query;
@@ -393,23 +546,48 @@ document.addEventListener("DOMContentLoaded", () => {
       score_asr:  Number(document.getElementById("score-asr").value),
     };
     const totalScore = scores.score_text + scores.score_ocr + scores.score_asr;
+    const hasText = !!query;
+    const hasAsr  = !!asr;
+    const hasOcr  = !!ocr;
 
-    if (!hasImage && totalScore === 0) {
-      showToast("The total of weight components must be greater than 0.", "error");
+    // Validation: Require at least 1 of the 3 fields (Text, ASR, OCR) or an Image
+    if (!hasText && !hasAsr && !hasOcr && !hasImage) {
+      showToast("Please enter at least 1 field (Text, ASR, OCR) or select an Image", "warning");
+      searchInput.focus();
       return;
     }
 
-    if (!hasImage && !query && !asr && !ocr) {
-      showToast("Please enter Text, ASR, OCR, or select an Image", "warning");
-      searchInput.focus();
-      return;
+    // Auto-fallback weights if totalScore is 0
+    if (!hasImage && totalScore === 0) {
+      if (hasText) scores.score_text = 0.5;
+      if (hasOcr)  scores.score_ocr  = 0.5;
+      if (hasAsr)  scores.score_asr  = 0.5;
     }
 
     const topK = parseInt(topKSlider.value, 10);
     const rrfToggle = document.getElementById("topk-rrf-toggle");
     const isRrfEnabled = rrfToggle ? rrfToggle.checked : false;
-    currentQuery = query || (hasImage ? `[Image Search]` : "");
+    currentQuery = query || asr || ocr || (hasImage ? "[Image Search]" : "");
     setLoading(true);
+
+    const TOPIC_MAP = {
+      "Tin tức": "News",
+      "Công nghệ": "Tech",
+      "Đua xe": "Race",
+      "Múa lân": "Dragon",
+      "Ẩm thực & Nấu ăn": "Food",
+      "Bài giảng": "Lecture",
+      "Du lịch & Văn hóa": "Travel",
+      "Ký sự & Đời sống": "Life",
+    };
+
+    const rawTopics = (window.globalConfig && window.globalConfig.topics && window.globalConfig.topics.length > 0)
+      ? window.globalConfig.topics
+      : Array.from(document.querySelectorAll(".topic-checkbox:checked")).map((cb) => cb.value);
+
+    const mappedTopics = rawTopics
+      .map((t) => TOPIC_MAP[t])
+      .filter(Boolean);
 
     try {
       let data;
@@ -425,6 +603,7 @@ document.addEventListener("DOMContentLoaded", () => {
           asrScore:  scores.score_asr,
           topK,
           RRF: isRrfEnabled,
+          topic: mappedTopics,
         });
       }
 
@@ -620,9 +799,17 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("history-btn").addEventListener("click", openHistoryPanel);
   document.getElementById("history-close").addEventListener("click", closeHistoryPanel);
   document.getElementById("history-clear-btn").addEventListener("click", () => {
-    clearSubmissionHistory();
-    renderSubmissionHistory();
-    showToast("History cleared", "info");
+    const activeTab = document.querySelector(".history-tab--active");
+    const tabName = activeTab ? activeTab.dataset.tab : "submissions";
+    if (tabName === "llm") {
+      clearLLMHistory();
+      renderLLMHistory();
+      showToast("LLM response history cleared", "info");
+    } else {
+      clearSubmissionHistory();
+      renderSubmissionHistory();
+      showToast("Submission history cleared", "info");
+    }
   });
   document.getElementById("history-modal").addEventListener("click", (e) => {
     if (e.target.id === "history-modal") closeHistoryPanel();

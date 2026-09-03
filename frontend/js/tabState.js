@@ -29,6 +29,9 @@
         id: `tab-${_tabCounter}`,
         title: `Search ${_tabCounter}`,
         taskMode: "KIS",        // "KIS" | "QA" | "TRAKE"  (placeholder)
+        context: "",
+        topics: [],
+        addition: "",
         query: "",
         asr: "",
         ocr: "",

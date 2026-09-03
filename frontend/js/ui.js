@@ -37,6 +37,55 @@ function showToast(message, type = "info") {
   }, 3000);
 }
 
+/* ──────────────── LLM Response Notification Modal ──────────────── */
+
+function showLLMNotificationModal(text) {
+  const existing = document.getElementById("llm-response-modal");
+  if (existing) existing.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "llm-response-modal";
+  modal.className = "llm-response-modal";
+
+  modal.innerHTML = `
+    <div class="llm-response-card">
+      <div class="llm-response-card__header">
+        <span class="llm-response-card__title">✨ Gemini LLM Suggestion</span>
+        <div class="llm-response-card__actions">
+          <button class="llm-response-card__copy-btn" title="Copy text">📋 Copy</button>
+          <button class="llm-response-card__close-btn" title="Close">✕</button>
+        </div>
+      </div>
+      <div class="llm-response-card__body">
+        <pre class="llm-response-card__text"></pre>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const textEl = modal.querySelector(".llm-response-card__text");
+  textEl.textContent = text;
+
+  const copyBtn = modal.querySelector(".llm-response-card__copy-btn");
+  const closeBtn = modal.querySelector(".llm-response-card__close-btn");
+
+  copyBtn.addEventListener("click", () => {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast("Copied LLM suggestion to clipboard!", "success");
+      copyBtn.textContent = "✓ Copied";
+      setTimeout(() => { copyBtn.textContent = "📋 Copy"; }, 2000);
+    });
+  });
+
+  closeBtn.addEventListener("click", () => {
+    modal.classList.remove("llm-response-modal--visible");
+    modal.addEventListener("transitionend", () => modal.remove());
+  });
+
+  requestAnimationFrame(() => modal.classList.add("llm-response-modal--visible"));
+}
+
 /* ──────────────── ASR Tooltip ──────────────── */
 
 let _asrTooltipEl = null;
@@ -1119,14 +1168,93 @@ function renderSubmissionHistory() {
   });
 }
 
+/* ──────────────── LLM Response History ──────────────── */
+
+const LLM_HISTORY_KEY = "vlm_llm_response_history";
+
+function getLLMHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(LLM_HISTORY_KEY) || "[]");
+  } catch { return []; }
+}
+
+function saveLLMHistoryEntry(entry) {
+  const history = getLLMHistory();
+  history.unshift(entry); // newest first
+  if (history.length > 50) history.length = 50; // max 50 entries
+  localStorage.setItem(LLM_HISTORY_KEY, JSON.stringify(history));
+}
+
+function clearLLMHistory() {
+  localStorage.removeItem(LLM_HISTORY_KEY);
+}
+
+function renderLLMHistory() {
+  const list = document.getElementById("llm-history-list");
+  if (!list) return;
+  const history = getLLMHistory();
+  list.innerHTML = "";
+
+  if (history.length === 0) {
+    list.innerHTML = `<div class="history-empty">No LLM responses yet.</div>`;
+    return;
+  }
+
+  history.forEach((entry) => {
+    const el = document.createElement("div");
+    el.className = "llm-history-entry";
+    const time = new Date(entry.timestamp).toLocaleString();
+    const contextSnippet = entry.context ? entry.context.substring(0, 80) + (entry.context.length > 80 ? "…" : "") : "(no context)";
+    const topicStr = (entry.topics && entry.topics.length > 0) ? entry.topics.join(", ") : "(none)";
+    const additionSnippet = entry.addition ? ` | Add: ${entry.addition.substring(0, 40)}${entry.addition.length > 40 ? "…" : ""}` : "";
+
+    el.innerHTML = `
+      <div class="llm-history-entry__header">
+        <span class="llm-history-entry__label">✨ LLM Response</span>
+        <span class="llm-history-entry__time">${time}</span>
+      </div>
+      <div class="llm-history-entry__context" title="Context: ${entry.context || ""}&#10;Addition: ${entry.addition || ""}">Context: ${contextSnippet} | Topics: ${topicStr}${additionSnippet}</div>
+      <div class="llm-history-entry__body"></div>
+      <div class="llm-history-entry__actions">
+        <button class="llm-history-entry__copy-btn">📋 Copy</button>
+      </div>
+    `;
+    // Set response text safely
+    const bodyEl = el.querySelector(".llm-history-entry__body");
+    bodyEl.textContent = entry.response;
+
+    el.querySelector(".llm-history-entry__copy-btn").addEventListener("click", () => {
+      navigator.clipboard.writeText(entry.response).then(() => {
+        showToast("📋 Copied to clipboard!", "success");
+      });
+    });
+
+    list.appendChild(el);
+  });
+}
+
 function openHistoryPanel() {
   renderSubmissionHistory();
+  renderLLMHistory();
   document.getElementById("history-modal").classList.add("modal--open");
+
+  // Setup tab switching
+  const tabs = document.querySelectorAll(".history-tab");
+  tabs.forEach((tab) => {
+    tab.onclick = () => {
+      tabs.forEach((t) => t.classList.remove("history-tab--active"));
+      tab.classList.add("history-tab--active");
+      const target = tab.dataset.tab;
+      document.getElementById("history-panel-submissions").hidden = (target !== "submissions");
+      document.getElementById("history-panel-llm").hidden = (target !== "llm");
+    };
+  });
 }
 
 function closeHistoryPanel() {
   document.getElementById("history-modal").classList.remove("modal--open");
 }
+
 
 /* ──────────────── Tab Bar ──────────────── */
 

@@ -16,7 +16,9 @@ This document describes the HTTP calls made by the frontend. All JSON requests u
   "ocr_score": "<current OCR slider value>",
   "asr": "<current ASR input>",
   "asr_score": "<current ASR slider value>",
-  "top_k": "<current Top-K slider value>"
+  "top_k": "<current Top-K slider value>",
+  "RRF": false,
+  "topic": ["News", "Tech"]
 }
 ```
 
@@ -29,6 +31,8 @@ This document describes the HTTP calls made by the frontend. All JSON requests u
 | `text_score` | number | Yes | Raw value from the Text score slider (`0.00` to `1.00`). |
 | `ocr_score` | number | Yes | Raw value from the OCR score slider (`0.00` to `1.00`). |
 | `asr_score` | number | Yes | Raw value from the ASR score slider (`0.00` to `1.00`). |
+| `RRF` | boolean | No | Toggle for Reciprocal Rank Fusion. |
+| `topic` | array | No | List of mapped topic strings: `["News", "Tech", "Race", "Dragon", "Food", "Lecture", "Travel", "Life"]`. |
 
 At least one of `query`, `asr`, or `ocr` must be non-empty in the UI.
 
