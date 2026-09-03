@@ -39,6 +39,44 @@ function showToast(message, type = "info") {
 
 /* ──────────────── LLM Response Notification Modal ──────────────── */
 
+function parseLLMResponseJSON(rawText) {
+  if (!rawText || typeof rawText !== "string") return null;
+  try {
+    const direct = JSON.parse(rawText.trim());
+    if (direct && typeof direct === "object" && (direct.search_list || direct.reason)) return direct;
+  } catch (e) {}
+
+  const codeBlockMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (codeBlockMatch && codeBlockMatch[1]) {
+    try {
+      const parsed = JSON.parse(codeBlockMatch[1].trim());
+      if (parsed && typeof parsed === "object" && (parsed.search_list || parsed.reason)) return parsed;
+    } catch (e) {}
+  }
+
+  const firstBrace = rawText.indexOf("{");
+  const lastBrace = rawText.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    try {
+      const candidate = rawText.substring(firstBrace, lastBrace + 1);
+      const parsed = JSON.parse(candidate);
+      if (parsed && typeof parsed === "object" && (parsed.search_list || parsed.reason)) return parsed;
+    } catch (e) {}
+  }
+
+  return null;
+}
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function showLLMNotificationModal(text) {
   const existing = document.getElementById("llm-response-modal");
   if (existing) existing.remove();
@@ -47,25 +85,104 @@ function showLLMNotificationModal(text) {
   modal.id = "llm-response-modal";
   modal.className = "llm-response-modal";
 
+  const data = parseLLMResponseJSON(text);
+
+  let bodyContentHtml = "";
+  if (data) {
+    let reasonHtml = "";
+    if (data.reason) {
+      reasonHtml = `
+        <div class="llm-reason-box">
+          <div class="llm-reason-box__label">💡 Phân tích & Gợi ý (Reason)</div>
+          <div class="llm-reason-box__text">${escapeHtml(data.reason)}</div>
+        </div>
+      `;
+    }
+
+    let searchListHtml = "";
+    if (Array.isArray(data.search_list) && data.search_list.length > 0) {
+      const cardsHtml = data.search_list.map((item, idx) => {
+        const topics = Array.isArray(item.topic) ? item.topic : [];
+        const tagsHtml = [
+          ...topics.map(t => `<span class="llm-tag llm-tag--topic">${escapeHtml(t)}</span>`),
+          item.RRF !== undefined ? `<span class="llm-tag llm-tag--rrf">${item.RRF ? 'RRF: On' : 'RRF: Off'}</span>` : '',
+          item.top_k ? `<span class="llm-tag llm-tag--topk">K=${item.top_k}</span>` : ''
+        ].filter(Boolean).join("");
+
+        return `
+          <div class="llm-query-card" data-query-index="${idx}" role="button" tabindex="0" title="Click để tìm kiếm với cấu hình này">
+            <div class="llm-query-card__top">
+              <span class="llm-query-card__badge">Query #${idx + 1}</span>
+              <div class="llm-query-card__tags">${tagsHtml}</div>
+            </div>
+            <div class="llm-query-card__content">
+              <div class="llm-query-card__field">
+                <span class="llm-query-card__field-name">Text:</span>
+                <span class="llm-query-card__field-val">${escapeHtml(item.text || "(empty)")}</span>
+              </div>
+              ${item.ocr ? `
+                <div class="llm-query-card__field">
+                  <span class="llm-query-card__field-name">OCR:</span>
+                  <span class="llm-query-card__field-val">${escapeHtml(item.ocr)}</span>
+                </div>
+              ` : ''}
+              ${item.asr ? `
+                <div class="llm-query-card__field">
+                  <span class="llm-query-card__field-name">ASR:</span>
+                  <span class="llm-query-card__field-val">${escapeHtml(item.asr)}</span>
+                </div>
+              ` : ''}
+            </div>
+            <div class="llm-query-card__footer">
+              <span class="llm-query-card__action-btn">🔍 Search this query</span>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      searchListHtml = `
+        <div class="llm-search-list-section">
+          <div class="llm-search-list-section__header">
+            <span class="llm-search-list-section__title">🔍 Search Queries (${data.search_list.length})</span>
+            <span class="llm-search-list-section__hint">Bấm vào 1 card để tìm kiếm</span>
+          </div>
+          <div class="llm-query-cards">${cardsHtml}</div>
+        </div>
+      `;
+    }
+
+    bodyContentHtml = reasonHtml + searchListHtml;
+  } else {
+    bodyContentHtml = `<pre class="llm-response-card__text">${escapeHtml(text)}</pre>`;
+  }
+
   modal.innerHTML = `
     <div class="llm-response-card">
       <div class="llm-response-card__header">
-        <span class="llm-response-card__title">✨ Gemini LLM Suggestion</span>
+        <span class="llm-response-card__title">✨ Gemini Suggestions</span>
         <div class="llm-response-card__actions">
           <button class="llm-response-card__copy-btn" title="Copy text">📋 Copy</button>
           <button class="llm-response-card__close-btn" title="Close">✕</button>
         </div>
       </div>
-      <div class="llm-response-card__body">
-        <pre class="llm-response-card__text"></pre>
-      </div>
+      <div class="llm-response-card__body">${bodyContentHtml}</div>
     </div>
   `;
 
   document.body.appendChild(modal);
 
-  const textEl = modal.querySelector(".llm-response-card__text");
-  textEl.textContent = text;
+  // Attach button card listeners
+  if (data && Array.isArray(data.search_list)) {
+    modal.querySelectorAll(".llm-query-card").forEach((card) => {
+      const idx = parseInt(card.dataset.queryIndex, 10);
+      const item = data.search_list[idx];
+      if (item) {
+        card.addEventListener("click", () => {
+          document.dispatchEvent(new CustomEvent("llmSearchRequested", { detail: item }));
+        });
+      }
+    });
+  }
 
   const copyBtn = modal.querySelector(".llm-response-card__copy-btn");
   const closeBtn = modal.querySelector(".llm-response-card__close-btn");
@@ -1208,20 +1325,64 @@ function renderLLMHistory() {
     const topicStr = (entry.topics && entry.topics.length > 0) ? entry.topics.join(", ") : "(none)";
     const additionSnippet = entry.addition ? ` | Add: ${entry.addition.substring(0, 40)}${entry.addition.length > 40 ? "…" : ""}` : "";
 
+    const data = parseLLMResponseJSON(entry.response);
+
+    let contentHtml = "";
+    if (data) {
+      if (data.reason) {
+        contentHtml += `
+          <div class="llm-reason-box llm-reason-box--compact">
+            <div class="llm-reason-box__label">💡 Reason:</div>
+            <div class="llm-reason-box__text">${escapeHtml(data.reason)}</div>
+          </div>
+        `;
+      }
+      if (Array.isArray(data.search_list) && data.search_list.length > 0) {
+        contentHtml += `
+          <div class="llm-history-queries">
+            ${data.search_list.map((item, idx) => `
+              <div class="llm-history-query-row">
+                <div class="llm-history-query-row__text">
+                  <span class="llm-history-query-row__num">#${idx + 1}</span>
+                  <span class="llm-history-query-row__val">${escapeHtml(item.text || "(empty)")}</span>
+                </div>
+                <button type="button" class="llm-history-query-search-btn" data-query-idx="${idx}">🔍 Search</button>
+              </div>
+            `).join("")}
+          </div>
+        `;
+      }
+    } else {
+      contentHtml = `<div class="llm-history-entry__body"></div>`;
+    }
+
     el.innerHTML = `
       <div class="llm-history-entry__header">
         <span class="llm-history-entry__label">✨ LLM Response</span>
         <span class="llm-history-entry__time">${time}</span>
       </div>
       <div class="llm-history-entry__context" title="Context: ${entry.context || ""}&#10;Addition: ${entry.addition || ""}">Context: ${contextSnippet} | Topics: ${topicStr}${additionSnippet}</div>
-      <div class="llm-history-entry__body"></div>
+      <div class="llm-history-entry__main">${contentHtml}</div>
       <div class="llm-history-entry__actions">
-        <button class="llm-history-entry__copy-btn">📋 Copy</button>
+        <button class="llm-history-entry__copy-btn">📋 Copy Raw</button>
       </div>
     `;
-    // Set response text safely
-    const bodyEl = el.querySelector(".llm-history-entry__body");
-    bodyEl.textContent = entry.response;
+
+    if (!data) {
+      const bodyEl = el.querySelector(".llm-history-entry__body");
+      if (bodyEl) bodyEl.textContent = entry.response;
+    } else if (Array.isArray(data.search_list)) {
+      el.querySelectorAll(".llm-history-query-search-btn").forEach((btn) => {
+        const idx = parseInt(btn.dataset.queryIdx, 10);
+        const item = data.search_list[idx];
+        if (item) {
+          btn.addEventListener("click", () => {
+            closeHistoryPanel();
+            document.dispatchEvent(new CustomEvent("llmSearchRequested", { detail: item }));
+          });
+        }
+      });
+    }
 
     el.querySelector(".llm-history-entry__copy-btn").addEventListener("click", () => {
       navigator.clipboard.writeText(entry.response).then(() => {

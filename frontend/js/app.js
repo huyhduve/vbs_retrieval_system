@@ -526,6 +526,89 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  /* ── LLM Search Suggestion Click Event ── */
+  document.addEventListener("llmSearchRequested", (e) => {
+    const payload = e.detail;
+    if (!payload) return;
+
+    // 1. Fill Text input
+    if (searchInput) searchInput.value = payload.text || "";
+    if (ocrInput)    ocrInput.value    = payload.ocr || "";
+    if (asrInput)    asrInput.value    = payload.asr || "";
+
+    // 2. Clear image query if present
+    if (currentImageFile) {
+      currentImageFile = null;
+      currentImagePreviewUrl = null;
+      if (imageInput) imageInput.value = "";
+      if (imagePreview) imagePreview.src = "";
+      if (imagePreviewContainer) imagePreviewContainer.hidden = true;
+      if (imagePlaceholder) imagePlaceholder.hidden = false;
+      if (imageDropzone) imageDropzone.classList.remove("image-dropzone--has-file");
+    }
+
+    // 3. Set Weights
+    const textScoreInput = document.getElementById("score-text");
+    const textScoreValue = document.getElementById("score-text-value");
+    const ocrScoreInput  = document.getElementById("score-ocr");
+    const ocrScoreValue  = document.getElementById("score-ocr-value");
+    const asrScoreInput  = document.getElementById("score-asr");
+    const asrScoreValue  = document.getElementById("score-asr-value");
+
+    if (textScoreInput) {
+      const val = payload.text_score !== undefined ? payload.text_score : 1.0;
+      textScoreInput.value = val;
+      if (textScoreValue) textScoreValue.textContent = Number(val).toFixed(2);
+    }
+    if (ocrScoreInput) {
+      const val = payload.ocr_score !== undefined ? payload.ocr_score : 0.0;
+      ocrScoreInput.value = val;
+      if (ocrScoreValue) ocrScoreValue.textContent = Number(val).toFixed(2);
+    }
+    if (asrScoreInput) {
+      const val = payload.asr_score !== undefined ? payload.asr_score : 0.0;
+      asrScoreInput.value = val;
+      if (asrScoreValue) asrScoreValue.textContent = Number(val).toFixed(2);
+    }
+
+    // 4. Set Top-K
+    if (payload.top_k && topKSlider) {
+      topKSlider.value = payload.top_k;
+      if (topKValue) topKValue.textContent = payload.top_k;
+    }
+
+    // 5. Set RRF Toggle
+    const rrfToggle = document.getElementById("topk-rrf-toggle");
+    if (rrfToggle && payload.RRF !== undefined) {
+      rrfToggle.checked = !!payload.RRF;
+    }
+
+    // 6. Set Topics
+    if (Array.isArray(payload.topic) && payload.topic.length > 0) {
+      const TOPIC_REVERSE_MAP = {
+        "News": "Tin tức",
+        "Tech": "Công nghệ",
+        "Race": "Đua xe",
+        "Dragon": "Múa lân",
+        "Food": "Ẩm thực & Nấu ăn",
+        "Lecture": "Bài giảng",
+        "Travel": "Du lịch & Văn hóa",
+        "Life": "Ký sự & Đời sống",
+      };
+      const vnTopics = payload.topic.map((t) => TOPIC_REVERSE_MAP[t] || t);
+      window.globalConfig.topics = vnTopics;
+      topicCheckboxes.forEach((cb) => {
+        cb.checked = vnTopics.includes(cb.value);
+      });
+      updateTopicDropdownText();
+    }
+
+    showToast("🔍 Triggering search from LLM suggestion…", "info");
+
+    // 7. Perform Search
+    performSearch();
+  });
+
   /* ══════════════════════════════════════════
      Search
   ══════════════════════════════════════════ */

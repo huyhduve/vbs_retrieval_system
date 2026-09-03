@@ -28,7 +28,7 @@
 | Tính năng / Yêu cầu | Tệp phụ trách chính | Hàm / Lớp liên quan | DOM Selector / ID / Class |
 |---|---|---|---|
 | **Cấu hình tìm kiếm (Header Config Popover)** | `index.html`<br>`js/app.js`<br>`js/tabState.js` | `updateTopicDropdownText()`, `saveCurrentInputsToTab()`, `restoreTabToUI()` | `#header-config-dropdown`, `#header-config-btn`, `#config-context-input`, `#config-addition-input`, `#topic-dropdown`, `#config-save-btn` |
-| **Gợi ý từ khóa AI (Gemini LLM Suggestion)** | `js/config.js`<br>`js/apiService.js`<br>`js/ui.js`<br>`js/app.js` | `callGeminiAPI(userPrompt, systemPrompt)`, `showLLMNotificationModal(text)` | `#llm-suggestion-btn`, `.header__llm-btn--loading`, `#llm-response-modal` |
+| **Gợi ý từ khóa AI (Gemini LLM Suggestion & Search Cards)** | `js/config.js`<br>`js/apiService.js`<br>`js/ui.js`<br>`js/app.js` | `callGeminiAPI(userPrompt, systemPrompt)`, `showLLMNotificationModal(text)`, Event: `llmSearchRequested` | `#llm-suggestion-btn`, `.header__llm-btn--loading`, `#llm-response-modal`, `.llm-reason-box`, `.llm-query-card` |
 | **Tìm kiếm đa phương thức (Text/OCR/ASR)** | `js/app.js`<br>`js/apiService.js` | `performSearch()`<br>`searchImages(searchInput)` | `#search-input`, `#asr-input`, `#ocr-input`, `#search-btn`, `#search-spinner` |
 | **Tìm kiếm bằng Upload Ảnh / Screenshot (<1.5MB)** | `js/app.js`<br>`js/apiService.js`<br>`js/config.js` | `performSearch()`<br>`searchByImage(imageFile, topK)`<br>`setSelectedImage(file)` | `#image-dropzone`, `#image-input`, `#image-preview`, `#image-remove-btn` |
 | **Trọng số điểm (Weight Sliders)** | `js/app.js` | `scoreControls.forEach(...)` | `#score-text`, `#score-ocr`, `#score-asr`, `#score-*-value` |
