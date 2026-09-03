@@ -2,8 +2,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     MILVUS_URI: str 
-    IMAGE_COLLECTION: str 
+    VISUAL_COLLECTION: str 
     ASR_COLLECTION: str
+    OCR_COLLECTION: str 
     EMBEDDING_PATH:str
     MODEL_CKPT: str 
     ASR_MODEL_CKPT: str

@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from .endpoints import health, search
+from .endpoints_v2 import health, search
 api_router = APIRouter()
 
 api_router.include_router(

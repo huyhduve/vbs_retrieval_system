@@ -24,10 +24,15 @@ async def lifespan(app: FastAPI):
 
 
     app.state.client = get_client()
+
     print(f"\n load collection '{settings.ASR_COLLECTION}' vào bộ nhớ RAM...")
     app.state.client.load_collection(collection_name=settings.ASR_COLLECTION)
-    print(f"\n load collection '{settings.IMAGE_COLLECTION}' vào bộ nhớ RAM...")
-    app.state.client.load_collection(collection_name=settings.IMAGE_COLLECTION)
+
+    print(f"\n load collection '{settings.VISUAL_COLLECTION}' vào bộ nhớ RAM...")
+    app.state.client.load_collection(collection_name=settings.VISUAL_COLLECTION)
+
+    print(f"\n load collection '{settings.OCR_COLLECTION}' vào bộ nhớ RAM...")
+    app.state.client.load_collection(collection_name=settings.OCR_COLLECTION)
     yield
 
     app.state.client.close()

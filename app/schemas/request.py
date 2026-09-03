@@ -1,6 +1,13 @@
 from pydantic import BaseModel, Field
+from typing import Literal, List
+
+TopicType = Literal["News", "Tech", "Race", "Dragon", "Food", "Lecture", "Travel", "Life"]
 
 class QueryRequest(BaseModel): 
+    topic : List[TopicType] = Field(
+        default=[], 
+        description="Selected Topic"
+    )
     RRF : bool
     text : str = Field(...,max_length=500, examples=["Donald Trump"])
     text_score: float = Field(default=0, ge=0, le=1)

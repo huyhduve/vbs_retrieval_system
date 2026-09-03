@@ -68,3 +68,6 @@ _Dùng 3 size khác nhau vì_
 - Milvus Lite:
   - So với Faiss thì hoàn chỉnh hơn, hỗ trợ search trên nhiều trường dữ liệu, hỗ trợ thuật search Weighted Ranking - Xác định độ quan trọng của các dữ liệu Text - OCR - ASR
   - Setup đơn giản, nhưng cần chạy môi trường giả lập Linux
+
+
+## EDA 

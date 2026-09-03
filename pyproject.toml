@@ -12,6 +12,7 @@ dependencies = [
     "torchvision>=0.26.0",
     "torchaudio>=2.11.0",
     "sentence-transformers>=6.0.0",
+    "pyvi>=0.1.1",
 ]
 
 
