@@ -45,37 +45,49 @@ def _apply_rrf_fusion(results_list: List[List[dict]], k: int = 60, top_k: int = 
 
 
 def _apply_weighted_fusion(
-    img_hits: List[dict], 
-    asr_hits: List[dict], 
-    img_w: float, 
-    asr_w: float, 
+    channel_hits : dict[str, List], 
+    weights : dict[str, float], 
     top_k: int = 100
 ) -> List[dict]:
-    """Thuật toán Weighted Fusion dựa trên Cosine Distance"""
     scores: Dict[str, float] = {}
 
-    total_w = img_w + asr_w
-    if total_w == 0:
-        img_w, asr_w = 0.5, 0.5
+    if not weights: 
+        return []
+    
+    total_w = sum(weights.values())
+
+    if total_w == 0: 
+        norm_weights = {k: 1.0 / len(weights) for k in weights}
     else:
-        img_w, asr_w = img_w / total_w, asr_w / total_w
+        norm_weights = {k: v / total_w for k, v in weights.items()}
 
-    for hit in img_hits:
-        doc_id = hit["id"]
-        distance = hit.get("distance", hit.get("score", 0.0))
-        scores[doc_id] = scores.get(doc_id, 0.0) + (distance * img_w)
+    for mode, hits in channel_hits.items(): 
+        w = norm_weights.get(mode, 0.0)
+        if w == 0.0 or not hits:
+            continue
 
-    for hit in asr_hits:
-        doc_id = hit["id"]
-        distance = hit.get("distance", hit.get("score", 0.0))
-        scores[doc_id] = scores.get(doc_id, 0.0) + (distance * asr_w)
+        raw_scores = [h.get("distance", h.get("score", 0.0)) for h in hits]
+        max_s, min_s = max(raw_scores), min(raw_scores)
+        scores_range = max_s - min_s
+
+
+        for hit in hits:
+            doc_id = hit["id"]
+            raw_score = hit.get("distance", hit.get("score", 0.0))
+
+            if max_s > 1.0 and scores_range > 0:
+                norm_score = (raw_score - min_s) / scores_range
+            else: 
+                norm_score = raw_score
+
+            scores[doc_id] = scores.get(doc_id, 0.0) + (norm_score * w)
+
 
     sorted_docs = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:top_k]
     return [{"id": doc_id, "score": score} for doc_id, score in sorted_docs]
 
 
 def _to_plain_list(vec: Any) -> List[float]:
-    """Chuyển đổi an toàn từ Tensor/NumPy Array/List sang List thuần."""
     if isinstance(vec, list):
         return vec
     if hasattr(vec, "flatten"):
