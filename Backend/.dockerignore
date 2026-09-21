@@ -1,0 +1,23 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+experiment/
+data/
+hf_cache/
+
+
+# Virtual environments
+.venv/ 
+.env
+
+# Milvus DB storages
+*.zip
+*.db/
+
+
+
+
