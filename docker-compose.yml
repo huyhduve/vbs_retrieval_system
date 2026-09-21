@@ -1,14 +1,14 @@
 services:
-  server: 
-    image: fastapi-server:latest 
+  backend: 
+    image: touduc-vbs-backend:latest
     build:
-      context: .              
+      context: ./Backend             
       dockerfile: Dockerfile 
-    container_name: fastapi-backend
+    container_name: touduc-vbs-backend
     volumes:
       - ./data:/workspace/data 
-      - ./hf_cache:/root/.cache/huggingface 
-      - ./app:/workspace/app
+      - ./.cache/hf_cache:/root/.cache/huggingface 
+      - ./Backend/app:/workspace/app
     ports:
       - "8000:8000"
     command: tail -f /dev/null

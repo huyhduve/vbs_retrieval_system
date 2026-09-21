@@ -33,8 +33,8 @@ const CONFIG = Object.freeze({
 
   // Gemini API Configuration
   GEMINI: {
-    API_KEY: "YOUR_API_KEY", // Replace with your Gemini API key
-    MODEL: "gemini-3.5-flash-lite",
+    API_KEY: "AIzaSyC072Hret1Pia-L_5xQ5VK_GLlZlxL5xds", // Replace with your Gemini API key
+    MODEL: "gemini-3.1-flash-lite",
     SYSTEM_PROMPT: `Bạn là Chuyên gia Phân tích Kịch bản Video và AI Query Engine cấp cao cho hệ thống Tìm kiếm Keyframe Video Đa phương thức (VBS - Video Browser Search).
 
     ==================================================
